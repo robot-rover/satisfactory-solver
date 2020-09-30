@@ -49,8 +49,6 @@ limestone = Resource("Limestone")
 iron_ingot = Resource("Iron Ingot")
 copper_ingot = Resource("Copper Ingot")
 
-resources = [iron_ore, copper_ore, limestone, iron_ingot, copper_ingot]
-
 iron_plate = Resource("Iron Plate")
 iron_rod = Resource("Iron Rod")
 wire = Resource("Wire")
@@ -61,10 +59,13 @@ rotor = Resource("Rotor")
 reinforced_iron_plate = Resource("Reinforced Iron Plate")
 smart_plating = Resource("Smart Plating")
 
+resources = [iron_ore, copper_ore, limestone, iron_ingot, copper_ingot, iron_plate, iron_rod, wire, cable, screw, rotor, reinforced_iron_plate, smart_plating]
+
 iron_node = Node.make(iron_ore)
 copper_node = Node.make(copper_ore)
 limestone_node = Node.make(limestone)
 
+_nodes_nested = [iron_node, copper_node, limestone_node]
+nodes = {node_type[0].resource: node_type for node_type in _nodes_nested}
 
-nodes_nested = [iron_node, copper_node, limestone_node]
-nodes = {nodes[0].resource: nodes for nodes in nodes_nested}
+resources.extend(node for node_type in nodes.values() for node in node_type)
