@@ -25,6 +25,10 @@ class Recipie:
     def __repr__(self):
         return f"{self.inputs} -> {self.outputs}"
 
+    def to_rates(self):
+        return [Rate(rate.resource, -rate.rate) for rate in self.inputs] \
+        + [Rate(rate.resource, rate.rate) for rate in self.outputs]
+
 miner_mk1 = Miner.make("Miner Mk.1", 60, 5, nodes)
 
 smelter = Machine("Smelter", [

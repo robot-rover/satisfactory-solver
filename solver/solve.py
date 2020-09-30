@@ -12,25 +12,21 @@ def optimize(capital, target):
         LpVariable(name=f"{{{machine}|{recipie}}}", lowBound=0) for machine,recipie in recipies
     ]
 
-    objective = None
+    constraints = {
+        resource: [] for resource in resources
+    }
 
-    for resource in resources:
-        terms = []
-        for (machine, recipie), variable in zip(recipies, machine_variables):
-            for input in recipie.inputs:
-                if input.resource == resource:
-                    terms.append(variable * -input.rate)
-            for output in recipie.outputs:
-                if output.resource == resource:
-                    terms.append(variable * output.rate)
+    for (machine, recipie), variable in zip(recipies, machine_variables):
+        for rate in recipie.to_rates():
+            constraints[rate.resource].append(variable * rate.rate)
 
-        for given in capital:
-            if given.resource == resource:
-                terms.append(given.rate)
+    for given in capital:
+        constraints[given.resource].append(given.rate)
 
-        if resource == target:
-            objective = lpSum(terms)        
+    for resource, terms in constraints.items():
         model += (lpSum(terms) >= 0, f"{resource} Production")
+        
+    objective = lpSum(constraints[target])
 
     model += objective
 
