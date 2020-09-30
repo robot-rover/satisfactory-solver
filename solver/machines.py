@@ -10,23 +10,11 @@ class Machine:
         return f"{self.name}"
 
 class Miner(Machine):
-    @staticmethod
-    def _recipie(node_purity, ratepermin):
-        if node_purity.purity == 0:
-            ratepermin = ratepermin // 2
-        elif node_purity.purity == 2:
-            ratepermin *= 2
-        return Recipie([Rate(node_purity, 1)], Rate(node_purity.resource, ratepermin))
-
-    @staticmethod
-    def recipies(ratepermin, node_map):
-        return [
-            Miner._recipie(purity, ratepermin) for resource in node_map.values() for purity in resource
-        ]
-
     @classmethod
     def make(cls, name, rate, power, node_map):
-        recipies = Miner.recipies(rate, node_map)
+        recipies = [
+            Recipie([Rate(node, 1)], Rate(node.resource, node.purity_adjust(rate))) for node_type in node_map.values() for node in node_type
+        ]
         return cls(name, recipies, power)
 
 class Recipie:

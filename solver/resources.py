@@ -31,6 +31,13 @@ class Node:
         purity_str = Node._purity_str[self.purity]
         return f"{purity_str} {self.resource} Node"
 
+    def purity_adjust(self, rate):
+        if self.purity == 0:
+            return rate // 2
+        if self.purity == 2:
+            return rate * 2
+        return rate
+
     @classmethod
     def make(cls, resource):
         return [cls(resource, purity) for purity in range(0,3)]
