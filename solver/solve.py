@@ -61,7 +61,9 @@ def production_list(capital, target, stack):
 
     return False
 
-def optimize(capital, target, stack):
+def optimize(capital, target):
+    stack = []
+    assert(production_list(capital, target, stack))
     model = LpProblem(name=f"{capital}->{target}", sense=LpMaximize)
 
     machine_variables = [
