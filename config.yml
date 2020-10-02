@@ -1,0 +1,66 @@
+node_resources:
+  - iron_ore
+  - copper_ore
+  - limestone
+  - coal
+
+resources:
+  - iron_ingot
+  - copper_ingot
+  - steel_ingot
+  - iron_plate
+  - iron_rod
+  - wire
+  - cable
+  - screw
+  - rotor
+  - modular_frame
+  - reinforced_iron_plate
+  - smart_plating
+  - steel_beam
+  - steel_pipe
+  - encased_industrial_beam
+  - concrete
+  - versatile_framework
+
+miners:
+  miner_mk.1:
+      power: 5
+      rate: 60
+  # miner_mk.2:
+  #     power: 12
+  #     rate: 120
+
+machines:
+  smelter:
+    power: 4
+    recipies:
+      - {inputs: {copper_ore: 30}, outputs: {copper_ingot: 30}}
+      - {inputs: {iron_ore: 30}, outputs: {iron_ingot: 30}}
+      
+  constructor:
+    power: 4
+    recipies:
+      - {inputs: {iron_ingot: 30}, outputs: {iron_plate: 20}}
+      - {inputs: {iron_ingot: 15}, outputs: {iron_rod: 15}}
+      - {inputs: {copper_ingot: 15}, outputs: {wire: 30}}
+      - {inputs: {wire: 60}, outputs: {cable: 30}}
+      - {inputs: {iron_rod: 10}, outputs: {screw: 40}}
+      - {inputs: {steel_ingot: 60}, outputs: {steel_beam: 15}}
+      - {inputs: {steel_ingot: 30}, outputs: {steel_pipe: 20}}
+      - {inputs: {limestone: 45}, outputs: {concrete: 15}}
+
+  assembler:
+    power: 15
+    recipies:
+      - {inputs: {iron_rod: 20, screw: 100}, outputs: {rotor: 4}}
+      - {inputs: {iron_plate: 30, screw: 60}, outputs: {reinforced_iron_plate: 5}}
+      - {inputs: {reinforced_iron_plate: 2, rotor: 2}, outputs: {smart_plating: 2}}
+      - {inputs: {reinforced_iron_plate: 3, iron_rod: 12}, outputs: {modular_frame: 2}}
+      - {inputs: {steel_beam: 24, concrete: 30}, outputs: {encased_industrial_beam: 6}}
+      - {inputs: {steel_beam: 30, concrete: 2.5}, outputs: {versatile_framework: 5}}
+
+  foundry:
+    power: 16
+    recipies:
+      - {inputs: {iron_ore: 45, coal: 45}, outputs: {steel_ingot: 45}}

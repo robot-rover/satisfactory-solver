@@ -1,5 +1,4 @@
-from .resources import Node, resources, Rate
-from .machines import machines
+from .resources import Node, Rate
 
 import math
 
@@ -22,24 +21,25 @@ class Result:
         ] + [
             "--- Recipies ---"
         ] + [
-            f"{recipie}: {quantity}" for recipie, quantity in self.recipies
+            f"{machine} - {recipie}: <{quantity}>" for (machine, recipie), quantity in self.recipies.items()
         ] + [
             "--- Outputs ---"
         ] + [
             f"{output}" for output in self.outputs
         ])
 
-def optimize(capital, target):
-    model = LpProblem(name=f"{capital}->{target}", sense=LpMaximize)
+def optimize(capital, target, config):
+    capital_str = ",".join(repr(rate) for rate in capital)
+    model = LpProblem(name=f"[{capital_str}]->{target!r}", sense=LpMaximize)
 
-    recipies = [(machine, recipie) for machine in machines for recipie in machine.recipies]
+    recipies = [(machine, recipie) for machine in config.machines for recipie in machine.recipies]
 
     machine_variables = [
-        LpVariable(name=f"{{{machine}|{recipie}}}", lowBound=0) for machine,recipie in recipies
+        LpVariable(name=f"{{{machine!r}|{recipie!r}}}", lowBound=0) for machine,recipie in recipies
     ]
 
     constraints = {
-        resource: [] for resource in resources
+        resource: [] for resource in config.resources.values()
     }
 
     for (machine, recipie), variable in zip(recipies, machine_variables):
@@ -52,7 +52,7 @@ def optimize(capital, target):
     objective = lpSum(constraints[target])
 
     constraints = {
-        resource: (lpSum(terms) >= 0, f"{resource} Production") for resource, terms in constraints.items()
+        resource: (lpSum(terms) >= 0, f"{resource!r}_production") for resource, terms in constraints.items()
     }
 
     for constraint in constraints.values():
@@ -60,15 +60,15 @@ def optimize(capital, target):
 
     model += objective
 
-    print(model)
+    # print(model)
 
     status = model.solve()
     if status == 1:
         result = Result(target, model.objective.value(), capital, 
-        [
-            (recipie, variable.value()) for recipie, variable in zip(recipies, machine_variables)
+        {
+            recipie: variable.value() for recipie, variable in zip(recipies, machine_variables)
             if not math.isclose(variable.value(), 0, abs_tol=0.00001)
-        ],
+        },
         [
             Rate(resource, constraint[0].value()) for resource, constraint in constraints.items()
             if not math.isclose(constraint[0].value(), 0, abs_tol=0.00001)

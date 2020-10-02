@@ -1,0 +1,12 @@
+config: config.yml
+
+factories:
+  reinforced_iron_plate_perfect:
+    inputs: 
+      iron_ore_node_normal: 2
+    target: reinforced_iron_plate
+  steel_factory:
+    inputs:
+      coal_node_pure: 1
+      iron_ore_node_impure: 4
+    target: steel_beam
