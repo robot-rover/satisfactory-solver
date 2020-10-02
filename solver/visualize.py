@@ -38,8 +38,6 @@ def visualize(result, image_file=None, dot_file=None, layout='dot'):
         for output in recipie[0][1].outputs:
             graph.add_edge(name, new_resource(output.resource), label=f" {output.rate * recipie[1]} / min")
 
-    print(graph.string())
-
     if dot_file is not None:
         graph.write(dot_file)
 
