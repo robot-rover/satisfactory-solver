@@ -1,9 +1,32 @@
-from .resources import Node, resources
+from .resources import Node, resources, Rate
 from .machines import machines
 
 import math
 
 from pulp import LpMaximize, LpProblem, LpStatus, lpSum, LpVariable
+
+class Result:
+    def __init__(self, target, inputs, recipies, outputs):
+        self.target = target
+        self.inputs = inputs
+        self.recipies = recipies
+        self.outputs = outputs
+
+    def __repr__(self):
+        return "\n".join([
+            f"### {self.target} ###",
+            "--- Inputs ---"
+        ] + [
+            f"{input}" for input in self.inputs
+        ] + [
+            "--- Recipies ---"
+        ] + [
+            f"{recipie}: {quantity}" for recipie, quantity in self.recipies
+        ] + [
+            "--- Outputs ---"
+        ] + [
+            f"{output}" for output in self.outputs
+        ])
 
 def optimize(capital, target):
     model = LpProblem(name=f"{capital}->{target}", sense=LpMaximize)
@@ -25,20 +48,28 @@ def optimize(capital, target):
     for given in capital:
         constraints[given.resource].append(given.rate)
 
-    for resource, terms in constraints.items():
-        model += (lpSum(terms) >= 0, f"{resource} Production")
-
     objective = lpSum(constraints[target])
+
+    constraints = {
+        resource: (lpSum(terms) >= 0, f"{resource} Production") for resource, terms in constraints.items()
+    }
+
+    for constraint in constraints.values():
+        model += constraint
 
     model += objective
 
-    print(model)
-
     status = model.solve()
     if status == 1:
-        print(f"objective: {model.objective.value()}")
-        for (machine, recipie), variable in zip(recipies, machine_variables):
-            if not math.isclose(variable.value(), 0, abs_tol=0.00001):
-                print(f"{variable.name}: {variable.value()}")
+        result = Result(target, capital, 
+        [
+            (recipie, variable.value()) for recipie, variable in zip(recipies, machine_variables)
+            if not math.isclose(variable.value(), 0, abs_tol=0.00001)
+        ],
+        [
+            Rate(resource, constraint[0].value()) for resource, constraint in constraints.items()
+            if not math.isclose(constraint[0].value(), 0, abs_tol=0.00001)
+        ])
+        return result
 
 
