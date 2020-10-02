@@ -1,6 +1,8 @@
 from .resources import Node, resources
 from .machines import machines
 
+import math
+
 from pulp import LpMaximize, LpProblem, LpStatus, lpSum, LpVariable
 
 def optimize(capital, target):
@@ -35,6 +37,8 @@ def optimize(capital, target):
     status = model.solve()
     if status == 1:
         print(f"objective: {model.objective.value()}")
-        for var in model.variables():
-            if var.value() != 0:
-                print(f"{var.name}: {var.value()}")
+        for (machine, recipie), variable in zip(recipies, machine_variables):
+            if not math.isclose(variable.value(), 0, abs_tol=0.00001):
+                print(f"{variable.name}: {variable.value()}")
+        
+
