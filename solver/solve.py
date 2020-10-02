@@ -6,15 +6,16 @@ import math
 from pulp import LpMaximize, LpProblem, LpStatus, lpSum, LpVariable
 
 class Result:
-    def __init__(self, target, inputs, recipies, outputs):
+    def __init__(self, target, objective, inputs, recipies, outputs):
         self.target = target
+        self.objective = objective
         self.inputs = inputs
         self.recipies = recipies
         self.outputs = outputs
 
     def __repr__(self):
         return "\n".join([
-            f"### {self.target} ###",
+            f"### {self.target} | {self.objective} ###",
             "--- Inputs ---"
         ] + [
             f"{input}" for input in self.inputs
@@ -59,9 +60,11 @@ def optimize(capital, target):
 
     model += objective
 
+    print(model)
+
     status = model.solve()
     if status == 1:
-        result = Result(target, capital, 
+        result = Result(target, model.objective.value(), capital, 
         [
             (recipie, variable.value()) for recipie, variable in zip(recipies, machine_variables)
             if not math.isclose(variable.value(), 0, abs_tol=0.00001)
@@ -71,5 +74,3 @@ def optimize(capital, target):
             if not math.isclose(constraint[0].value(), 0, abs_tol=0.00001)
         ])
         return result
-
-
