@@ -27,7 +27,7 @@ def optimize(capital, target):
 
     for resource, terms in constraints.items():
         model += (lpSum(terms) >= 0, f"{resource} Production")
-        
+
     objective = lpSum(constraints[target])
 
     model += objective
@@ -40,5 +40,5 @@ def optimize(capital, target):
         for (machine, recipie), variable in zip(recipies, machine_variables):
             if not math.isclose(variable.value(), 0, abs_tol=0.00001):
                 print(f"{variable.name}: {variable.value()}")
-        
+
 
