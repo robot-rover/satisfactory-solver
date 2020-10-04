@@ -22,14 +22,25 @@ resources:
   - encased_industrial_beam
   - concrete
   - versatile_framework
+  - stator
+  - automated_wiring
+  - motor
+  - oil_node_pure
+  - oil_node_normal
+  - oil_node_impure
+  - crude_oil
+  - rubber
+  - heavy_oil_residue
+  - polymer_resin
+  - water
 
 miners:
   miner_mk.1:
       power: 5
       rate: 60
-  # miner_mk.2:
-  #     power: 12
-  #     rate: 120
+  miner_mk.2:
+      power: 12
+      rate: 120
 
 machines:
   smelter:
@@ -58,9 +69,32 @@ machines:
       - {inputs: {reinforced_iron_plate: 2, rotor: 2}, outputs: {smart_plating: 2}}
       - {inputs: {reinforced_iron_plate: 3, iron_rod: 12}, outputs: {modular_frame: 2}}
       - {inputs: {steel_beam: 24, concrete: 30}, outputs: {encased_industrial_beam: 6}}
-      - {inputs: {steel_beam: 30, concrete: 2.5}, outputs: {versatile_framework: 5}}
+      - {inputs: {steel_beam: 30, modular_frame: 2.5}, outputs: {versatile_framework: 5}}
+      - {inputs: {steel_pipe: 15, wire: 40}, outputs: {stator: 5}}
+      - {inputs: {stator: 2.5, cable: 50}, outputs: {automated_wiring: 2.5}}
+      - {inputs: {stator: 10, rotor: 10}, outputs: {motor: 5}}
 
   foundry:
     power: 16
     recipies:
       - {inputs: {iron_ore: 45, coal: 45}, outputs: {steel_ingot: 45}}
+
+  oil_extractor:
+    power: 40
+    recipies:
+      - {inputs: {oil_node_pure: 1}, outputs: {crude_oil: 240}}
+      - {inputs: {oil_node_normal: 1}, outputs: {crude_oil: 120}}
+      - {inputs: {oil_node_impure: 1}, outputs: {crude_oil: 60}}
+
+  refinery:
+    power: 30
+    recipies:
+      - {inputs: {crude_oil: 30}, outputs: {rubber: 20, heavy_oil_residue: 20}}
+      - {inputs: {crude_oil: 30}, outputs: {plastic: 20, heavy_oil_residue: 10}}
+      - {inputs: {polymer_resin: 40, water: 40}, outputs: {rubber: 20}}
+      - {inputs: {polymer_resin: 60, water: 20}, outputs: {plastic: 20}}
+
+  water_extractor:
+    power: 20
+    recipies:
+      - {inputs: {}, outputs: {water: 120}}

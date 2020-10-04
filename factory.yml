@@ -10,3 +10,19 @@ factories:
       coal_node_pure: 1
       iron_ore_node_impure: 4
     target: steel_beam
+  versatile_framework:
+    inputs:
+      steel_beam: 30
+      modular_frame: 2.5
+    target: versatile_framework
+  automated_wiring:
+    inputs:
+      steel_pipe: 15
+      copper_ore_node_normal: 1
+    target: automated_wiring
+  motor_factory:
+    inputs:
+      copper_ore: 60
+      iron_ore: 120
+      steel_pipe: 30
+    target: motor
