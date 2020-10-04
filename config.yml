@@ -33,6 +33,7 @@ resources:
   - heavy_oil_residue
   - polymer_resin
   - water
+  - plastic
 
 miners:
   miner_mk.1:
