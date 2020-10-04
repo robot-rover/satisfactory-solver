@@ -2,7 +2,7 @@ from .resources import Node, Rate
 
 import math
 
-from pulp import LpMaximize, LpProblem, LpStatus, lpSum, LpVariable
+from pulp import LpMaximize, LpMinimize, LpProblem, LpStatus, lpSum, LpVariable
 
 class Result:
     def __init__(self, target, objective, inputs, recipies, outputs):
@@ -38,32 +38,39 @@ def optimize(capital, target, config):
         LpVariable(name=f"{{{machine!r}|{recipie!r}}}", lowBound=0) for machine,recipie in recipies
     ]
 
-    constraints = {
+    constraint_terms = {
         resource: [] for resource in config.resources.values()
     }
 
     for (machine, recipie), variable in zip(recipies, machine_variables):
         for rate in recipie.to_rates():
-            constraints[rate.resource].append(variable * rate.rate)
+            constraint_terms[rate.resource].append(variable * rate.rate)
 
     for given in capital:
-        constraints[given.resource].append(given.rate)
+        constraint_terms[given.resource].append(given.rate)
 
-    objective = lpSum(constraints[target])
+    objective = lpSum(constraint_terms[target])
 
     constraints = {
-        resource: (lpSum(terms) >= 0, f"{resource!r}_production") for resource, terms in constraints.items()
+        resource: (lpSum(terms) >= 0, f"{resource!r}_production") for resource, terms in constraint_terms.items()
     }
 
-    for constraint in constraints.values():
-        model += constraint
+    for constraint, label in constraints.values():
+        model.constraints[label] = constraint
 
-    model += objective
-
-    # print(model)
+    model.setObjective(objective)
 
     status = model.solve()
     if status == 1:
+        target_production = model.objective.value()
+        model.sense = LpMinimize
+        power_objective_terms = [
+            variable * machine.power for variable, (machine, recipie) in zip(machine_variables, recipies)
+        ]
+        target_constraint = lpSum(constraint_terms[target]) >= target_production
+        model.constraints[f"objective_production_{target!r}"] = target_constraint
+        model.setObjective(lpSum(power_objective_terms))
+        model.solve()
         result = Result(target, model.objective.value(), capital, 
         {
             recipie: variable.value() for recipie, variable in zip(recipies, machine_variables)
