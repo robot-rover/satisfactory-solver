@@ -71,6 +71,7 @@ def optimize(capital, target, config):
         model.constraints[f"objective_production_{target!r}"] = target_constraint
         model.setObjective(lpSum(power_objective_terms))
         model.solve()
+        model.roundSolution()
         result = Result(target, model.objective.value(), capital, 
         {
             recipie: variable.value() for recipie, variable in zip(recipies, machine_variables)

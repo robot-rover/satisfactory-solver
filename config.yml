@@ -3,6 +3,8 @@ node_resources:
   - copper_ore
   - limestone
   - coal
+  - caterium_ore
+  - sulfur
 
 resources:
   - iron_ingot
@@ -34,6 +36,19 @@ resources:
   - polymer_resin
   - water
   - plastic
+  - computer
+  - circuit_board
+  - heavy_modular_frame
+  - copper_sheet
+  - quickwire
+  - circuit_board
+  - high-speed_connector
+  - caterium_ingot
+  - beacon
+  - black_powder
+  - rifle_cartridge
+  - nobelisk
+  - compacted_coal
 
 miners:
   miner_mk.1:
@@ -49,6 +64,7 @@ machines:
     recipies:
       - {inputs: {copper_ore: 30}, outputs: {copper_ingot: 30}}
       - {inputs: {iron_ore: 30}, outputs: {iron_ingot: 30}}
+      - {inputs: {caterium_ore: 45}, outputs: {caterium_ingot: 15}}
       
   constructor:
     power: 4
@@ -61,6 +77,9 @@ machines:
       - {inputs: {steel_ingot: 60}, outputs: {steel_beam: 15}}
       - {inputs: {steel_ingot: 30}, outputs: {steel_pipe: 20}}
       - {inputs: {limestone: 45}, outputs: {concrete: 15}}
+      - {inputs: {copper_ingot: 20}, outputs: {copper_sheet: 10}}
+      - {inputs: {caterium_ingot: 12}, outputs: {quickwire: 60}}
+      - {inputs: {iron_ingot: 12.5}, outputs: {wire: 22.5}}
 
   assembler:
     power: 15
@@ -74,6 +93,11 @@ machines:
       - {inputs: {steel_pipe: 15, wire: 40}, outputs: {stator: 5}}
       - {inputs: {stator: 2.5, cable: 50}, outputs: {automated_wiring: 2.5}}
       - {inputs: {stator: 10, rotor: 10}, outputs: {motor: 5}}
+      - {inputs: {copper_sheet: 15, plastic: 30}, outputs: {circuit_board: 7.5}}
+      - {inputs: {coal: 7.5, sulfur: 15}, outputs: {black_powder: 7.5}}
+      - {inputs: {black_powder: 15, steel_pipe: 30}, outputs: {nobelisk: 3}}
+      - {inputs: {compacted_coal: 3.75, sulfur: 7.5}, outputs: {black_powder: 15}}
+      - {inputs: {coal: 25, sulfur: 25}, outputs: {compacted_coal: 25}}
 
   foundry:
     power: 16
@@ -99,3 +123,13 @@ machines:
     power: 20
     recipies:
       - {inputs: {}, outputs: {water: 120}}
+
+
+  manufacturer:
+    power: 55
+    recipies:
+      - {inputs: {circuit_board: 25, cable: 22.5, plastic: 45, screw: 130}, outputs: {computer: 2.5}}
+      - {inputs: {modular_frame: 10, steel_pipe: 30, encased_industrial_beam: 10, screw: 200}, outputs: {heavy_modular_frame: 2}}
+      - {inputs: {quickwire: 210, cable: 37.5, circuit_board: 3.8}, outputs: {high-speed_connector: 3.8}}
+      - {inputs: {beacon: 3, steel_pipe: 30, black_powder: 30, rubber: 30}, outputs: {rifle_cartridge: 15}}
+      - {inputs: {iron_plate: 22.5, iron_rod: 7.5, wire: 112.5, cable: 15}, outputs: {beacon: 7.5}}
