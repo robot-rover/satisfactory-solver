@@ -28,7 +28,7 @@ def get_subcategory(soup):
 
 def get_icons(soup):
     urls = [
-        li.findChildren("img")[0].get("src").partition("/revision")[0]
+        li.findChildren("a")[0].get("href").partition("/revision")[0]
         for li in soup.find_all("li", attrs={"class": "gallerybox"})
     ]
 
