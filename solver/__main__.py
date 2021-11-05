@@ -10,7 +10,7 @@ if __name__ == "__main__":
     #     result = optimize(factory.inputs, factory.target, config)
     #     print(result)
     #     visualize(result, image_file=f"{factory.name}.png")
-    from . import gui
-    gui.main()
+    from . import gui_qt
+    gui_qt.main()
     from . import game_parse
     # game_parse.main()
