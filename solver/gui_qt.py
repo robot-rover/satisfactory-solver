@@ -7,81 +7,6 @@ from . import game_parse
 from . import resources
 
 
-class ItemRateModel(qtc.QAbstractListModel):
-    def __init__(self):
-        super().__init__()
-        self.lst = []
-
-    def rowCount(self, parent=None):
-        return len(self.lst)
-
-    def data(self, index, role=None):
-        tup = self.lst[index.row()]
-        if(role == qtc.Qt.EditRole):
-            return tup[1]
-        if(role == qtc.Qt.DisplayRole):
-            return tup[2]
-        return None
-
-    def setData(self, index, value, role=None):
-        tup = self.lst[index.row()]
-        if role == qtc.Qt.ItemDataRole.EditRole:
-            self.lst[index.row()] = (tup[0], float(value), tup[2])
-        elif role == qtc.Qt.DisplayRole:
-            self.lst[index.row()] = (value, tup[1], tup[2])
-        else:
-            self.lst[index.row()] = (value[0], value[1], tup[2])
-        self.dataChanged.emit(index, index)
-        return True
-
-    def flags(self, index):
-        return qtc.Qt.ItemIsEnabled | qtc.Qt.ItemIsEditable
-
-    def insertRows(self, row, count, parent):
-        self.beginInsertRows(parent, row, row + count - 1)
-        end_rev = []
-        while(len(self.lst)) > row:
-            end_rev.append(self.lst.pop())
-        for _ in range(count):
-            self.lst.append(("", 0.0, qtw.QSpinBox()))
-        self.lst.extend(end_rev[::-1])
-        self.endInsertRows()
-        return True
-
-
-class ItemRateDelegate(qtw.QStyledItemDelegate):
-    def __init__(self):
-        super().__init__()
-
-    def createEditor(self, parent, option, index):
-        editor = qtw.QWidget(parent)
-        layout = qtw.QHBoxLayout()
-        editor.setLayout(layout)
-
-        # text = qtw.QLabel()
-        # layout.addWidget(text)
-
-        spin = qtw.QSpinBox()
-        spin.setFrame(False)
-        spin.setMinimum(0)
-        layout.addWidget(spin)
-        return editor
-
-    def setEditorData(self, editor, index):
-        print('setEditor')
-        # value = index.model().data(index, qtc.Qt.EditRole)
-        # editor.layout().itemAt(1).widget().setValue(value)
-
-    def setModelData(self, editor, model, index):
-        print('setModel')
-        # value = editor.layout().itemAt(1).widget().value()
-        # model.setData(index, value, qtc.Qt.EditRole)
-
-    def updateEditorGeometry(self, editor, option, index):
-        print('geometry')
-        editor.layout().setGeometry(option.rect)
-
-
 class FuzzyQCompleter(qtw.QCompleter):
     def __init__(self, parent, items):
         super().__init__(parent=parent)
@@ -111,18 +36,6 @@ def main():
     recipes, items = game_parse.get_docs()
     item_lookup = {item.display: item for item in items.values()}
 
-    input_model = ItemRateModel()
-
-    def add_input(button, idx):
-        if not button.text():
-            return  # Avoid double add
-        print("Selected New Input:", button.completer().lst[idx])
-        model_index = input_model.rowCount()
-        input_model.insertRow(model_index)
-        input_model.setData(input_model.createIndex(
-            model_index, 0), (button.completer().lst[idx], 0.0))
-        button.clear()
-
     app = qtw.QApplication(sys.argv)
     w = qtw.QWidget()
     w.setWindowTitle("Satisfactory Solver")
@@ -149,10 +62,33 @@ def main():
         lambda idx: add_input(input_search_box, idx.row()), qtc.Qt.DirectConnection)
     input_search_box.setCompleter(input_search_comp)
 
-    input_list = qtw.QListView()
-    input_list.setModel(input_model)
-    input_list.setItemDelegate(ItemRateDelegate())
-    input_layout.addWidget(input_list)
+    input_scroll = qtw.QScrollArea()
+    input_scroll.setWidgetResizable(True)
+    input_scroll.setHorizontalScrollBarPolicy(qtc.Qt.ScrollBarAlwaysOff)
+    input_layout.addWidget(input_scroll)
+
+    input_scroll_holdee = qtw.QWidget()
+    input_list = qtw.QVBoxLayout(input_scroll_holdee)
+    input_list.insertStretch(-1)
+    input_scroll.setWidget(input_scroll_holdee)
+
+    def add_input(button, idx):
+        if not button.text():
+            return  # Avoid double add
+        print("Selected New Input:", button.completer().lst[idx])
+        text = f'{button.completer().lst[idx]}'
+
+        widget = qtw.QWidget()
+        layout = qtw.QHBoxLayout(widget)
+
+        label = qtw.QLabel(text)
+        layout.addWidget(label)
+
+        amount = qtw.QSpinBox()
+        layout.addWidget(amount)
+
+        input_list.insertWidget(input_list.count() - 1, widget)
+        button.clear()
 
     svg_view = qtw.QGraphicsView()
     wlayout.addWidget(svg_view)
