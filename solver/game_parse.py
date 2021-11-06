@@ -6,6 +6,7 @@ import re
 from .util import to_from_dict
 
 DOCS_JSON_OPTIONS = [
+    "./Docs.json"
     "%steamapps%/common/Satisfactory/CommunityResources/Docs/Docs.json",
     "C://Program Files (x86)/Steam/steamapps/common/Satisfactory/CommunityResources/Docs/Docs.json",
     "E://SteamLibrary/steamapps/common/Satisfactory/CommunityResources/Docs/Docs.json",
@@ -45,6 +46,7 @@ class Item:
 
     def __repr__(self):
         return self.id
+
 
 @to_from_dict(["display", "id", "inputs", "output", "machine"])
 class Recipe:
@@ -95,6 +97,7 @@ class Recipe:
     def __repr__(self):
         return self.id
 
+
 def scrape_docs(generate_path="./", doc_path=None):
     if doc_path is None:
         try:
@@ -126,7 +129,8 @@ def scrape_docs(generate_path="./", doc_path=None):
     except FileExistsError:
         print("recipes.yaml already exists, skipping...")
 
-def get_docs(yaml_path = "./", doc_path = None):
+
+def get_docs(yaml_path="./", doc_path=None):
     def parse_items():
         with open(yaml_path + "recipes.yaml", 'r') as recipe_stream:
             recipes = yaml.safe_load(recipe_stream)
@@ -153,6 +157,7 @@ def get_docs(yaml_path = "./", doc_path = None):
 def main():
     from sys import argv
     scrape_docs(doc_path=(argv[1] if len(argv) > 1 else None))
+
 
 if __name__ == "__main__":
     main()
