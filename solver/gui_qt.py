@@ -33,31 +33,37 @@ class FuzzyQCompleter(qtw.QCompleter):
         return []
 
 
-class SchematicInputWidget(qtw.QGroupBox):
+class SchematicInputWidget(qtw.QWidget):
     def __init__(self, item, rate):
         super().__init__()
         self.item = item
         self.rate = rate
 
+        layout = qtw.QHBoxLayout(self)
+        layout.setContentsMargins(5, 5, 5, 5)
+
         self.icon = QPixmap(self.item.icon).scaledToHeight(
             50, qtc.Qt.SmoothTransformation)
         icon_label = qtw.QLabel()
         icon_label.setPixmap(self.icon)
+        layout.addWidget(icon_label, 0)
 
-        self.setTitle(item.display)
-        self.setCheckable(True)
-        layout = qtw.QHBoxLayout(self)
-        layout.addWidget(icon_label)
+        group_box = qtw.QGroupBox()
+        group_box.setTitle(item.display)
+        group_box.setCheckable(True)
+        layout.addWidget(group_box, 1)
 
+        group_layout = qtw.QHBoxLayout()
         amount = qtw.QSpinBox()
-        layout.addWidget(amount)
+        amount.setMaximum(2**31-1)
+        amount.setMinimum(-2**31)
+        group_layout.addWidget(amount)
+        group_box.setLayout(group_layout)
 
-        self.toggled.connect(self.triggerRemove)
+        group_box.toggled.connect(self.triggerRemove)
 
     def triggerRemove(self, checked):
-        print('A')
         if not checked:
-            print('B')
             self.parentWidget().layout().removeWidget(self)
             self.deleteLater()
 
@@ -100,10 +106,10 @@ def main():
     input_scroll_holdee = qtw.QWidget()
     input_list = qtw.QVBoxLayout(input_scroll_holdee)
     input_list.insertStretch(-1)
+    input_list.setSpacing(0)
     input_scroll.setWidget(input_scroll_holdee)
 
     def add_input(button, idx):
-        print("Call")
         if not button.text():
             return  # Avoid double add
         print("Selected New Input:", button.completer().lst[idx])
@@ -111,7 +117,6 @@ def main():
         widget = SchematicInputWidget(item, 0.0)
 
         input_list.insertWidget(input_list.count() - 1, widget)
-        print(f'Clearing {button.text()}')
         button.clear()
 
     svg_view = qtw.QGraphicsView()
