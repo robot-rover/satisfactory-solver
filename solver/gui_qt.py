@@ -1,3 +1,4 @@
+from PySide6.QtGui import QPixmap
 import PySide6.QtWidgets as qtw
 import PySide6.QtCore as qtc
 from fuzzywuzzy import process
@@ -18,10 +19,10 @@ class FuzzyQCompleter(qtw.QCompleter):
         self.completion()
 
     def completion(self):
-        l = process.extractBests(self.term, self.items, limit=20)
+        l = process.extractBests(self.term, self.items.keys(), limit=20)
+        self.lst = [self.items[display] for display, value in l]
         model = qtc.QStringListModel()
-        self.lst = [t[0] for t in l]
-        model.setStringList(self.lst)
+        model.setStringList(t[0] for t in l)
         self.setModel(model)
 
     def pathFromIndex(self, index):
@@ -30,6 +31,35 @@ class FuzzyQCompleter(qtw.QCompleter):
     def splitPath(self, path):
         self.setCompletionPrefix(path)
         return []
+
+
+class SchematicInputWidget(qtw.QGroupBox):
+    def __init__(self, item, rate):
+        super().__init__()
+        self.item = item
+        self.rate = rate
+
+        self.icon = QPixmap(self.item.icon).scaledToHeight(
+            50, qtc.Qt.SmoothTransformation)
+        icon_label = qtw.QLabel()
+        icon_label.setPixmap(self.icon)
+
+        self.setTitle(item.display)
+        self.setCheckable(True)
+        layout = qtw.QHBoxLayout(self)
+        layout.addWidget(icon_label)
+
+        amount = qtw.QSpinBox()
+        layout.addWidget(amount)
+
+        self.toggled.connect(self.triggerRemove)
+
+    def triggerRemove(self, checked):
+        print('A')
+        if not checked:
+            print('B')
+            self.parentWidget().layout().removeWidget(self)
+            self.deleteLater()
 
 
 def main():
@@ -50,7 +80,7 @@ def main():
     input_layout.addWidget(input_search_box)
 
     input_search_comp = FuzzyQCompleter(
-        input_search_box, list(item_lookup.keys()))
+        input_search_box, {item.display: item for item in item_lookup.values()})
     input_search_comp.setCompletionMode(
         qtw.QCompleter.CompletionMode.PopupCompletion)
     input_search_comp.setModelSorting(
@@ -73,24 +103,15 @@ def main():
     input_scroll.setWidget(input_scroll_holdee)
 
     def add_input(button, idx):
+        print("Call")
         if not button.text():
             return  # Avoid double add
         print("Selected New Input:", button.completer().lst[idx])
-        text = f'{button.completer().lst[idx]}'
-
-        widget = qtw.QGroupBox()
-        widget.setTitle(text)
-        widget.setFlat(True)
-        widget.setCheckable(True)
-        layout = qtw.QHBoxLayout(widget)
-
-        amount = qtw.QSpinBox()
-        layout.addWidget(amount)
-
-        remove = qtw.QPushButton()
-        layout.addWidget(remove)
+        item = button.completer().lst[idx]
+        widget = SchematicInputWidget(item, 0.0)
 
         input_list.insertWidget(input_list.count() - 1, widget)
+        print(f'Clearing {button.text()}')
         button.clear()
 
     svg_view = qtw.QGraphicsView()
