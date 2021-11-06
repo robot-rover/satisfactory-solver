@@ -78,14 +78,17 @@ def main():
         print("Selected New Input:", button.completer().lst[idx])
         text = f'{button.completer().lst[idx]}'
 
-        widget = qtw.QWidget()
+        widget = qtw.QGroupBox()
+        widget.setTitle(text)
+        widget.setFlat(True)
+        widget.setCheckable(True)
         layout = qtw.QHBoxLayout(widget)
-
-        label = qtw.QLabel(text)
-        layout.addWidget(label)
 
         amount = qtw.QSpinBox()
         layout.addWidget(amount)
+
+        remove = qtw.QPushButton()
+        layout.addWidget(remove)
 
         input_list.insertWidget(input_list.count() - 1, widget)
         button.clear()
