@@ -10,7 +10,12 @@ if __name__ == "__main__":
     #     result = optimize(factory.inputs, factory.target, config)
     #     print(result)
     #     visualize(result, image_file=f"{factory.name}.png")
-    from . import gui_qt
-    gui_qt.main()
-    from . import game_parse
-    # game_parse.main()
+    if len(sys.argv) > 1 and sys.argv[1] == 'parse':
+        from . import game_parse
+        game_parse.main(sys.argv[2] if len(sys.argv) > 2 else None)
+    elif len(sys.argv) > 1 and sys.argv[1] == 'solve':
+        from . import solve
+        solve.main(sys.argv[2:])
+    else:
+        from . import gui_qt
+        gui_qt.main()

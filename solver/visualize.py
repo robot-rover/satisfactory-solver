@@ -27,10 +27,10 @@ def visualize(result, image_file=None, dot_file=None, layout='dot'):
         graph.add_edge(new_resource(rate.resource), name, label=f" {rate.rate} / min")
 
     recipie_nodes = [
-        f"{machine} x{quantity}\n{recipie.inputs}\n{recipie.outputs}" for (machine, recipie), quantity in result.recipies.items()
+        f"{machine} x{quantity}\n{recipie.inputs}\n{recipie.outputs}" for (machine, recipie), quantity in result.recipes.items()
     ]
 
-    for ((machine, recipie), quantity), name in zip(result.recipies.items(), recipie_nodes):
+    for ((machine, recipie), quantity), name in zip(result.recipes.items(), recipie_nodes):
         graph.add_node(name)
         for input in recipie.inputs:
             graph.add_edge(new_resource(input.resource), name, label=f" {input.rate * quantity} / min")

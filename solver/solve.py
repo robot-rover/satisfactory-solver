@@ -1,58 +1,77 @@
-from .resources import Node, Rate
+from .resources import ItemRate
 
 import math
 
 from pulp import LpMaximize, LpMinimize, LpProblem, LpStatus, lpSum, LpVariable
+def recipe_to_rates(recipe):
+    return [ItemRate(resource, -rate) for resource, rate in recipe.inputs.items()] \
+    + [ItemRate(resource, rate) for resource, rate in recipe.outputs.items()]
+
+class Problem:
+    def __init__(self, target, inputs):
+        self.target = target
+        self.inputs = inputs
 
 class Result:
-    def __init__(self, target, objective, inputs, recipies, outputs):
-        self.target = target
+    def __init__(self, problem, objective, recipes, outputs):
+        self.problem = problem
         self.objective = objective
-        self.inputs = inputs
-        self.recipies = recipies
+        self.recipes = recipes
         self.outputs = outputs
 
     def __repr__(self):
         return "\n".join([
-            f"### {self.target} | {self.objective} ###",
+            f"### {self.problem.target} | {self.objective} ###",
             "--- Inputs ---"
         ] + [
-            f"{input}" for input in self.inputs
+            f"{input}" for input in self.problem.inputs
         ] + [
             "--- Recipies ---"
         ] + [
-            f"{machine} - {recipie}: <{quantity}>" for (machine, recipie), quantity in self.recipies.items()
+            f"{recipe_id}: <{quantity}>" for recipe_id, quantity in self.recipes.items()
         ] + [
             "--- Outputs ---"
         ] + [
             f"{output}" for output in self.outputs
         ])
 
-def optimize(capital, target, config):
-    capital_str = ",".join(repr(rate) for rate in capital)
-    model = LpProblem(name=f"[{capital_str}]->{target!r}", sense=LpMaximize)
+def optimize(problem, game_data):
+    filtered_recipes = {
+        recipe_id: recipe for recipe_id, recipe in game_data.recipes.items()
+        if all(resource in game_data.items for resource in recipe.inputs)
+        if all(resource in game_data.items for resource in recipe.outputs)
+        if recipe.machine is not None
+    }
 
-    recipies = [(machine, recipie) for machine in config.machines for recipie in machine.recipies]
+    # for recipe in game_data.recipes.values():
+    #     print(f'{recipe.id} @ {recipe.machine}: {recipe.inputs} | {recipe.outputs}')
 
-    machine_variables = [
-        LpVariable(name=f"{{{machine!r}|{recipie!r}}}", lowBound=0) for machine,recipie in recipies
+    capital_str = ",".join(ir.resource for ir in problem.inputs)
+    model_name = f'[{capital_str}]->{problem.target}'
+    print(model_name)
+    model = LpProblem(name=model_name, sense=LpMaximize)
+
+    recipe_variables = [
+        LpVariable(name=f"{recipie_id}", lowBound=0) for recipie_id in filtered_recipes
     ]
 
     constraint_terms = {
-        resource: [] for resource in config.resources.values()
+        resource_id: [] for resource_id in game_data.items
     }
 
-    for (machine, recipie), variable in zip(recipies, machine_variables):
-        for rate in recipie.to_rates():
-            constraint_terms[rate.resource].append(variable * rate.rate)
+    for recipe, variable in zip(filtered_recipes.values(), recipe_variables):
+        if all(resource in game_data.items for resource in recipe.inputs) \
+                and all(resource in game_data.items for resource in recipe.outputs):
+            for item_rate in recipe_to_rates(recipe):
+                constraint_terms[item_rate.resource].append(variable * item_rate.rate)
 
-    for given in capital:
-        constraint_terms[given.resource].append(given.rate)
+    for item_rate in problem.inputs:
+        constraint_terms[item_rate.resource].append(item_rate.rate)
 
-    objective = lpSum(constraint_terms[target])
+    objective = lpSum(constraint_terms[problem.target])
 
     constraints = {
-        resource: (lpSum(terms) >= 0, f"{resource!r}_production") for resource, terms in constraint_terms.items()
+        resource_id: (lpSum(terms) >= 0, f"{resource_id}_production") for resource_id, terms in constraint_terms.items()
     }
 
     for constraint, label in constraints.values():
@@ -65,20 +84,35 @@ def optimize(capital, target, config):
         target_production = model.objective.value()
         model.sense = LpMinimize
         power_objective_terms = [
-            variable * machine.power for variable, (machine, recipie) in zip(machine_variables, recipies)
+            variable * game_data.machines[recipie.machine].power for variable, recipie in zip(recipe_variables, filtered_recipes.values())
         ]
-        target_constraint = lpSum(constraint_terms[target]) >= target_production
-        model.constraints[f"objective_production_{target!r}"] = target_constraint
+        target_constraint = lpSum(constraint_terms[problem.target]) >= target_production
+        model.constraints[f"objective_production_{problem.target}"] = target_constraint
         model.setObjective(lpSum(power_objective_terms))
         model.solve()
         model.roundSolution()
-        result = Result(target, model.objective.value(), capital, 
-        {
-            recipie: variable.value() for recipie, variable in zip(recipies, machine_variables)
+        result = Result(problem, model.objective.value(), {
+            recipie.id: variable.value() for recipie, variable in zip(filtered_recipes.values(), recipe_variables)
             if not math.isclose(variable.value(), 0, abs_tol=0.00001)
         },
         [
-            Rate(resource, constraint[0].value()) for resource, constraint in constraints.items()
+            ItemRate(resource, constraint[0].value()) for resource, constraint in constraints.items()
             if not math.isclose(constraint[0].value(), 0, abs_tol=0.00001)
         ])
         return result
+
+def main(args):
+    from . import game_parse
+    it = iter(args)
+    target = next(it)
+    inputs = []
+    try:
+        while True:
+            id = next(it)
+            rate = int(next(it))
+            inputs.append(ItemRate(id, rate))
+    except StopIteration:
+        pass
+    game_data = game_parse.get_docs()
+    result = optimize(Problem(target, inputs), game_data)
+    print(result)

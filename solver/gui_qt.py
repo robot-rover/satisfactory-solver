@@ -4,8 +4,11 @@ import PySide6.QtCore as qtc
 from fuzzywuzzy import process
 import sys
 
+from solver.solve import Problem
+
 from . import game_parse
-from . import resources
+from .resources import ItemRate
+from . import solve
 
 
 class FuzzyQCompleter(qtw.QCompleter):
@@ -32,49 +35,91 @@ class FuzzyQCompleter(qtw.QCompleter):
         self.setCompletionPrefix(path)
         return []
 
+class ItemSearchWidget(qtw.QLineEdit):
+    def __init__(self, callback, items):
+        super().__init__()
+        self.callback = callback
+
+        input_search_comp = FuzzyQCompleter(
+            self, items)
+        input_search_comp.setCompletionMode(
+            qtw.QCompleter.CompletionMode.PopupCompletion)
+        input_search_comp.setModelSorting(
+            qtw.QCompleter.ModelSorting.UnsortedModel)
+        # Ensure the complete activation goes before the return button
+        self.returnPressed.connect(lambda: self.select_item(0), qtc.Qt.QueuedConnection)
+        input_search_comp.activated[qtc.QModelIndex].connect(lambda idx: self.select_item(idx.row()), qtc.Qt.DirectConnection)
+        self.setCompleter(input_search_comp)
+
+    def select_item(self, idx):
+        if not self.text():
+            return  # Avoid double add
+        item = self.completer().lst[idx]
+
+        self.callback(item)
+        self.clear()
+
+def make_rate_box(rate):
+    group_widget = qtw.QSpinBox()
+    group_widget.setMaximum(2**31-1)
+    group_widget.setMinimum(-2**31)
+    group_widget.setValue(rate)
+    return group_widget
 
 class SchematicInputWidget(qtw.QWidget):
-    def __init__(self, item, rate):
+    def __init__(self, item, group_widget, check_delete=True):
         super().__init__()
-        self.item = item
-        self.rate = rate
+        self.item = None
+        self.group_widget = group_widget
 
         layout = qtw.QHBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
 
-        self.icon = QPixmap(self.item.icon).scaledToHeight(
-            50, qtc.Qt.SmoothTransformation)
-        icon_label = qtw.QLabel()
-        icon_label.setPixmap(self.icon)
-        layout.addWidget(icon_label, 0)
+        self.icon_label = qtw.QLabel()
+        self.icon_label.setFixedSize(50,50)
+        layout.addWidget(self.icon_label, 0)
 
-        group_box = qtw.QGroupBox()
-        group_box.setTitle(item.display)
-        group_box.setCheckable(True)
-        layout.addWidget(group_box, 1)
+        self.group_box = qtw.QGroupBox()
+        layout.addWidget(self.group_box, 1)
 
         group_layout = qtw.QHBoxLayout()
-        amount = qtw.QSpinBox()
-        amount.setMaximum(2**31-1)
-        amount.setMinimum(-2**31)
-        group_layout.addWidget(amount)
-        group_box.setLayout(group_layout)
+        group_layout.addWidget(self.group_widget)
+        self.group_box.setLayout(group_layout)
 
-        group_box.toggled.connect(self.triggerRemove)
+        if check_delete:
+            self.group_box.setCheckable(True)
+            self.group_box.toggled.connect(self.triggerRemove)
+        if item is not None:
+            self.setItem(item)
+
+    def setItem(self, item):
+        self.item = item
+        self.icon = QPixmap(self.item.icon).scaledToHeight(
+            50, qtc.Qt.SmoothTransformation)
+        self.icon_label.setPixmap(self.icon)
+        self.group_box.setTitle(item.display)
+
+    def getItem(self):
+        return self.item
+
+    def getRate(self):
+        return self.group_widget.value()
+
 
     def triggerRemove(self, checked):
         if not checked:
             self.parentWidget().layout().removeWidget(self)
             self.deleteLater()
 
-
 def main():
-    recipes, items = game_parse.get_docs()
+    game_data = game_parse.get_docs()
+    items = game_data.items
     item_lookup = {item.display: item for item in items.values()}
 
     app = qtw.QApplication(sys.argv)
     w = qtw.QWidget()
     w.setWindowTitle("Satisfactory Solver")
+    w.resize(900, 600)
 
     wlayout = qtw.QHBoxLayout()
     w.setLayout(wlayout)
@@ -82,21 +127,8 @@ def main():
     input_layout = qtw.QVBoxLayout()
     wlayout.addLayout(input_layout)
 
-    input_search_box = qtw.QLineEdit()
+    input_search_box = ItemSearchWidget(None, item_lookup)
     input_layout.addWidget(input_search_box)
-
-    input_search_comp = FuzzyQCompleter(
-        input_search_box, {item.display: item for item in item_lookup.values()})
-    input_search_comp.setCompletionMode(
-        qtw.QCompleter.CompletionMode.PopupCompletion)
-    input_search_comp.setModelSorting(
-        qtw.QCompleter.ModelSorting.UnsortedModel)
-    # Ensure the complete activation goes before the return button
-    input_search_box.returnPressed.connect(lambda: add_input(
-        input_search_box, 0), qtc.Qt.QueuedConnection)
-    input_search_comp.activated[qtc.QModelIndex].connect(
-        lambda idx: add_input(input_search_box, idx.row()), qtc.Qt.DirectConnection)
-    input_search_box.setCompleter(input_search_comp)
 
     input_scroll = qtw.QScrollArea()
     input_scroll.setWidgetResizable(True)
@@ -109,15 +141,35 @@ def main():
     input_list.setSpacing(0)
     input_scroll.setWidget(input_scroll_holdee)
 
-    def add_input(button, idx):
-        if not button.text():
-            return  # Avoid double add
-        print("Selected New Input:", button.completer().lst[idx])
-        item = button.completer().lst[idx]
-        widget = SchematicInputWidget(item, 0.0)
+    def add_input(item):
+        widget = SchematicInputWidget(item, make_rate_box(0))
 
         input_list.insertWidget(input_list.count() - 1, widget)
-        button.clear()
+    
+    input_search_box.callback = add_input
+
+    output_search_box = ItemSearchWidget(None, item_lookup)
+    input_layout.addWidget(output_search_box)
+    go_box = qtw.QPushButton("Go!")
+    output_show_box = SchematicInputWidget(None, go_box, False)
+    input_layout.addWidget(output_show_box)
+
+    output_search_box.callback = output_show_box.setItem
+
+    def go_fn():
+        target = output_show_box.getItem().id
+        def get_item_box(index):
+            return input_list.itemAt(index).widget()
+        inputs = [
+            ItemRate(get_item_box(i).getItem().id, get_item_box(i).getRate()) for i in range(input_list.count() - 1)
+        ]
+        print('Inputs:', inputs)
+        problem = solve.Problem(target, inputs)
+        solution = solve.optimize(problem, game_data)
+        print(solution)
+
+
+    go_box.clicked.connect(go_fn)
 
     svg_view = qtw.QGraphicsView()
     wlayout.addWidget(svg_view)

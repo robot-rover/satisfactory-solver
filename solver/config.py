@@ -31,7 +31,7 @@ class Config:
 
         self.machines = [
             Machine(name, [
-                Recipie(ratetup(recipie['inputs'], resource_fn), ratetup(recipie['outputs'], resource_fn)) for recipie in data['recipies']
+                Recipie(ratetup(recipie['inputs'], resource_fn), ratetup(recipie['outputs'], resource_fn)) for recipie in data['recipes']
             ], data['power'])
             for name, data in yml['machines'].items()
         ]
