@@ -33,7 +33,7 @@ def visualize(result, game_data, image_file=None, dot_file=None, layout='dot'):
         graph.add_edge(new_resource(rate.resource),
                        name, label=f" {round(rate.rate, 3)} / min")
 
-    recipes = {game_data.recipes[recipe_id]               : quantity for recipe_id, quantity in result.recipes.items()}
+    recipes = {game_data.recipes[recipe_id]: quantity for recipe_id, quantity in result.recipes.items()}
 
     for recipe, quantity in recipes.items():
         machine_name = game_data.machines[recipe.machine].display
@@ -45,7 +45,7 @@ def visualize(result, game_data, image_file=None, dot_file=None, layout='dot'):
             f'{game_data.items[rate.resource].display}: {rate.rate}' for rate in recipe.output_rates()
         )
 
-        name = f"{recipe.display}\n{machine_name} x{quantity}\n{inputs}\n{outputs}"
+        name = f"{recipe.display}\n{machine_name} x{round(quantity, 3)}\n{inputs}\n{outputs}"
         graph.add_node(recipe.id, label=name)
         for ir in recipe.input_rates():
             graph.add_edge(new_resource(ir.resource), recipe.id,

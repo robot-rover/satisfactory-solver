@@ -1,10 +1,13 @@
 from PySide6.QtGui import QPixmap
 import PySide6.QtWidgets as qtw
 import PySide6.QtCore as qtc
+import PySide6.QtSvg as qtsvg
+import PySide6.QtSvgWidgets as qtsvgw
 from fuzzywuzzy import process
 import sys
 
 from solver.solve import Problem
+from solver.visualize import visualize
 
 from . import game_parse
 from .resources import ItemRate
@@ -35,6 +38,7 @@ class FuzzyQCompleter(qtw.QCompleter):
         self.setCompletionPrefix(path)
         return []
 
+
 class ItemSearchWidget(qtw.QLineEdit):
     def __init__(self, callback, items):
         super().__init__()
@@ -47,8 +51,10 @@ class ItemSearchWidget(qtw.QLineEdit):
         input_search_comp.setModelSorting(
             qtw.QCompleter.ModelSorting.UnsortedModel)
         # Ensure the complete activation goes before the return button
-        self.returnPressed.connect(lambda: self.select_item(0), qtc.Qt.QueuedConnection)
-        input_search_comp.activated[qtc.QModelIndex].connect(lambda idx: self.select_item(idx.row()), qtc.Qt.DirectConnection)
+        self.returnPressed.connect(
+            lambda: self.select_item(0), qtc.Qt.QueuedConnection)
+        input_search_comp.activated[qtc.QModelIndex].connect(
+            lambda idx: self.select_item(idx.row()), qtc.Qt.DirectConnection)
         self.setCompleter(input_search_comp)
 
     def select_item(self, idx):
@@ -59,12 +65,14 @@ class ItemSearchWidget(qtw.QLineEdit):
         self.callback(item)
         self.clear()
 
+
 def make_rate_box(rate):
     group_widget = qtw.QSpinBox()
     group_widget.setMaximum(2**31-1)
     group_widget.setMinimum(-2**31)
     group_widget.setValue(rate)
     return group_widget
+
 
 class SchematicInputWidget(qtw.QWidget):
     def __init__(self, item, group_widget, check_delete=True):
@@ -76,7 +84,7 @@ class SchematicInputWidget(qtw.QWidget):
         layout.setContentsMargins(5, 5, 5, 5)
 
         self.icon_label = qtw.QLabel()
-        self.icon_label.setFixedSize(50,50)
+        self.icon_label.setFixedSize(50, 50)
         layout.addWidget(self.icon_label, 0)
 
         self.group_box = qtw.QGroupBox()
@@ -105,11 +113,11 @@ class SchematicInputWidget(qtw.QWidget):
     def getRate(self):
         return self.group_widget.value()
 
-
     def triggerRemove(self, checked):
         if not checked:
             self.parentWidget().layout().removeWidget(self)
             self.deleteLater()
+
 
 def main():
     game_data = game_parse.get_docs()
@@ -145,7 +153,7 @@ def main():
         widget = SchematicInputWidget(item, make_rate_box(0))
 
         input_list.insertWidget(input_list.count() - 1, widget)
-    
+
     input_search_box.callback = add_input
 
     output_search_box = ItemSearchWidget(None, item_lookup)
@@ -156,8 +164,18 @@ def main():
 
     output_search_box.callback = output_show_box.setItem
 
+    svg_scene = qtw.QGraphicsScene()
+    svg_view = qtw.QGraphicsView(svg_scene)
+    svg_item = qtsvgw.QGraphicsSvgItem()
+    svg_renderer = qtsvg.QSvgRenderer()
+    svg_item.setSharedRenderer(svg_renderer)
+    svg_scene.addItem(svg_item)
+
+    wlayout.addWidget(svg_view, 1)
+
     def go_fn():
         target = output_show_box.getItem().id
+
         def get_item_box(index):
             return input_list.itemAt(index).widget()
         inputs = [
@@ -167,12 +185,11 @@ def main():
         problem = solve.Problem(target, inputs)
         solution = solve.optimize(problem, game_data)
         print(solution)
-
+        visualize(solution, game_data, image_file='.temp.svg')
+        svg_renderer.load('.temp.svg')
+        svg_item.setElementId('')
 
     go_box.clicked.connect(go_fn)
-
-    svg_view = qtw.QGraphicsView()
-    wlayout.addWidget(svg_view)
 
     w.show()
     sys.exit(app.exec_())
