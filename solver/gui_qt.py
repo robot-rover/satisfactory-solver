@@ -1,10 +1,12 @@
 from PySide6.QtGui import QPixmap
 import PySide6.QtWidgets as qtw
 import PySide6.QtCore as qtc
+import PySide6.QtGui as qtg
 import PySide6.QtSvg as qtsvg
 import PySide6.QtSvgWidgets as qtsvgw
 from fuzzywuzzy import process
 import sys
+import shutil
 
 from solver.solve import Problem
 from solver.visualize import visualize
@@ -12,6 +14,8 @@ from solver.visualize import visualize
 from . import game_parse
 from .resources import ItemRate
 from . import solve
+
+OUTPUT_ICON = 'icons/Milestone/Recipe_Icon_Equipment_Dark.png'
 
 
 class FuzzyQCompleter(qtw.QCompleter):
@@ -102,8 +106,12 @@ class SchematicInputWidget(qtw.QWidget):
 
     def setItem(self, item):
         self.item = item
-        self.setIcon(self.item.icon)
-        self.group_box.setTitle(item.display)
+        if item is not None:
+            self.setIcon(self.item.icon)
+            self.group_box.setTitle(item.display)
+        else:
+            self.setIcon('')
+            self.group_box.setTitle('')
 
     def setIcon(self, icon_path):
         self.icon = QPixmap(icon_path).scaledToHeight(
@@ -139,13 +147,17 @@ def main():
     items = game_data.items
     item_lookup = {item.display: item for item in items.values()}
 
+    solution = None
+
     app = qtw.QApplication(sys.argv)
-    w = qtw.QWidget()
+    w = qtw.QMainWindow()
+    central_widget = qtw.QWidget()
+    w.setCentralWidget(central_widget)
     w.setWindowTitle("Satisfactory Solver")
     w.resize(900, 600)
 
     wlayout = qtw.QHBoxLayout()
-    w.setLayout(wlayout)
+    central_widget.setLayout(wlayout)
 
     input_layout = qtw.QVBoxLayout()
     wlayout.addLayout(input_layout)
@@ -175,7 +187,7 @@ def main():
     input_layout.addWidget(output_search_box)
     go_box = qtw.QPushButton("Go!")
     output_show_box = SchematicInputWidget(None, go_box, False)
-    output_show_box.setIcon('icons/Milestone/Recipe_Icon_Equipment_Dark.png')
+    output_show_box.setIcon(OUTPUT_ICON)
     input_layout.addWidget(output_show_box)
 
     output_search_box.callback = output_show_box.setItem
@@ -190,6 +202,7 @@ def main():
     wlayout.addWidget(svg_view, 1)
 
     def go_fn():
+        nonlocal solution
         target = output_show_box.getItem().id
 
         def get_item_box(index):
@@ -202,10 +215,60 @@ def main():
         solution = solve.optimize(problem, game_data)
         print(solution)
         visualize(solution, game_data, image_file='.temp.svg')
-        svg_renderer.load('.temp.svg')
+        print(svg_item)
+        print(svg_item.renderer())
+        svg_item.renderer().load('.temp.svg')
         svg_item.setElementId('')
 
     go_box.clicked.connect(go_fn)
+
+    file_menu = w.menuBar().addMenu("&File")
+
+    def clearWindow():
+        nonlocal svg_renderer, solution
+        solution = None
+        svg_renderer.deleteLater()
+        svg_renderer = qtsvg.QSvgRenderer()
+        svg_item.setSharedRenderer(svg_renderer)
+        while input_list.count() > 1:
+            input_list.takeAt(0).widget().deleteLater()
+        output_show_box.setItem(None)
+        output_show_box.setIcon(OUTPUT_ICON)
+
+    newAct = qtg.QAction('&New')
+    newAct.setShortcut(qtg.QKeySequence.New)
+    newAct.setStatusTip('Create a new Design')
+    newAct.triggered.connect(clearWindow)
+    file_menu.addAction(newAct)
+
+    openAct = qtg.QAction('&Open')
+    openAct.setShortcut(qtg.QKeySequence.Open)
+    openAct.setStatusTip('Open an existing Design Plan')
+    openAct.triggered.connect(lambda *args: print(f'Open File: {args}'))
+    file_menu.addAction(openAct)
+
+    saveAct = qtg.QAction('&Save Plan')
+    saveAct.setShortcut(qtg.QKeySequence.Save)
+    saveAct.setStatusTip('Save the Design Plan')
+    saveAct.triggered.connect(lambda *args: print(f'Save Plan: {args}'))
+    file_menu.addAction(saveAct)
+
+    saveAsAct = qtg.QAction('Save Plan &As')
+    saveAsAct.setShortcut(qtg.QKeySequence.SaveAs)
+    saveAsAct.setStatusTip('Save the Design Plan As')
+    saveAsAct.triggered.connect(lambda *args: print(f'Save As Plan: {args}'))
+    file_menu.addAction(saveAsAct)
+
+    def saveSvg():
+        filename, img_kind = qtw.QFileDialog.getSaveFileName(
+            w, "Save Implementation Image File", 'factory.svg', 'Vector Image (*.svg);;Raster Image (*.png)')
+        visualize(solution, game_data, image_file=filename)
+
+    svgAct = qtg.QAction('&Export Image')
+    svgAct.setShortcut(qtg.QKeySequence(qtc.Qt.CTRL | qtc.Qt.Key_E))
+    svgAct.setStatusTip('Save the implementation Image')
+    svgAct.triggered.connect(saveSvg)
+    file_menu.addAction(svgAct)
 
     w.show()
     sys.exit(app.exec_())
