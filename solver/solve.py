@@ -4,10 +4,12 @@ import math
 
 from pulp import LpMaximize, LpMinimize, LpProblem, LpStatus, lpSum, LpVariable
 
+
 class Problem:
     def __init__(self, target, inputs):
         self.target = target
         self.inputs = inputs
+
 
 class Result:
     def __init__(self, problem, objective, recipes, outputs):
@@ -31,6 +33,7 @@ class Result:
         ] + [
             f"{output}" for output in self.outputs
         ])
+
 
 def optimize(problem, game_data):
     filtered_recipes = {
@@ -60,7 +63,8 @@ def optimize(problem, game_data):
         if all(resource in game_data.items for resource in recipe.inputs) \
                 and all(resource in game_data.items for resource in recipe.outputs):
             for item_rate in recipe.get_rates():
-                constraint_terms[item_rate.resource].append(variable * item_rate.rate)
+                constraint_terms[item_rate.resource].append(
+                    variable * item_rate.rate)
 
     for item_rate in problem.inputs:
         constraint_terms[item_rate.resource].append(item_rate.rate)
@@ -83,7 +87,8 @@ def optimize(problem, game_data):
         power_objective_terms = [
             variable * game_data.machines[recipie.machine].power for variable, recipie in zip(recipe_variables, filtered_recipes.values())
         ]
-        target_constraint = lpSum(constraint_terms[problem.target]) >= target_production
+        target_constraint = lpSum(
+            constraint_terms[problem.target]) >= target_production
         model.constraints[f"objective_production_{problem.target}"] = target_constraint
         model.setObjective(lpSum(power_objective_terms))
         model.solve()
@@ -92,11 +97,12 @@ def optimize(problem, game_data):
             recipie.id: variable.value() for recipie, variable in zip(filtered_recipes.values(), recipe_variables)
             if not math.isclose(variable.value(), 0, abs_tol=0.00001)
         },
-        [
+            [
             ItemRate(resource, constraint[0].value()) for resource, constraint in constraints.items()
             if not math.isclose(constraint[0].value(), 0, abs_tol=0.00001)
         ])
         return result
+
 
 def main(args):
     from . import game_parse

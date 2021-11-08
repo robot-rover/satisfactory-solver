@@ -14,9 +14,10 @@ if __name__ == "__main__":
         from . import game_parse
         game_parse.main(sys.argv[2] if len(sys.argv) > 2 else None)
     elif len(sys.argv) > 1 and sys.argv[1] == 'solve':
-        from . import solve, visualize,game_parse
+        from . import solve, visualize, game_parse
         result = solve.main(sys.argv[2:])
-        visualize.visualize(result, game_parse.get_docs(), image_file='test.svg')
+        visualize.visualize(result, game_parse.get_docs(),
+                            image_file='test.svg', dot_file='test.dot')
     else:
         from . import gui_qt
         gui_qt.main()
