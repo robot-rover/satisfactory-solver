@@ -3,4 +3,4 @@ __pycache__
 icons
 *.png
 *.svg
-*.yml
+*.yaml

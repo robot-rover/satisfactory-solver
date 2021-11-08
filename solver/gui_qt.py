@@ -102,10 +102,13 @@ class SchematicInputWidget(qtw.QWidget):
 
     def setItem(self, item):
         self.item = item
-        self.icon = QPixmap(self.item.icon).scaledToHeight(
+        self.setIcon(self.item.icon)
+        self.group_box.setTitle(item.display)
+
+    def setIcon(self, icon_path):
+        self.icon = QPixmap(icon_path).scaledToHeight(
             50, qtc.Qt.SmoothTransformation)
         self.icon_label.setPixmap(self.icon)
-        self.group_box.setTitle(item.display)
 
     def getItem(self):
         return self.item
@@ -117,6 +120,18 @@ class SchematicInputWidget(qtw.QWidget):
         if not checked:
             self.parentWidget().layout().removeWidget(self)
             self.deleteLater()
+
+
+class TestWidget(qtw.QWidget):
+    def __init__(self, scroll_area):
+        super().__init__()
+        self.scroll_area = scroll_area
+
+    def resizeEvent(self, event):
+        width = self.scroll_area.width() - self.scroll_area.viewport().width() + \
+            event.size().width()
+        print(f'Width: {width}')
+        self.scroll_area.setMinimumWidth(width)
 
 
 def main():
@@ -143,15 +158,15 @@ def main():
     input_scroll.setHorizontalScrollBarPolicy(qtc.Qt.ScrollBarAlwaysOff)
     input_layout.addWidget(input_scroll)
 
-    input_scroll_holdee = qtw.QWidget()
+    input_scroll_holdee = TestWidget(input_scroll)
     input_list = qtw.QVBoxLayout(input_scroll_holdee)
+    input_scroll_holdee.setLayout(input_list)
     input_list.insertStretch(-1)
     input_list.setSpacing(0)
     input_scroll.setWidget(input_scroll_holdee)
 
     def add_input(item):
         widget = SchematicInputWidget(item, make_rate_box(0))
-
         input_list.insertWidget(input_list.count() - 1, widget)
 
     input_search_box.callback = add_input
@@ -160,6 +175,7 @@ def main():
     input_layout.addWidget(output_search_box)
     go_box = qtw.QPushButton("Go!")
     output_show_box = SchematicInputWidget(None, go_box, False)
+    output_show_box.setIcon('icons/Milestone/Recipe_Icon_Equipment_Dark.png')
     input_layout.addWidget(output_show_box)
 
     output_search_box.callback = output_show_box.setItem
