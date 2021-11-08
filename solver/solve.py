@@ -3,9 +3,6 @@ from .resources import ItemRate
 import math
 
 from pulp import LpMaximize, LpMinimize, LpProblem, LpStatus, lpSum, LpVariable
-def recipe_to_rates(recipe):
-    return [ItemRate(resource, -rate) for resource, rate in recipe.inputs.items()] \
-    + [ItemRate(resource, rate) for resource, rate in recipe.outputs.items()]
 
 class Problem:
     def __init__(self, target, inputs):
@@ -62,7 +59,7 @@ def optimize(problem, game_data):
     for recipe, variable in zip(filtered_recipes.values(), recipe_variables):
         if all(resource in game_data.items for resource in recipe.inputs) \
                 and all(resource in game_data.items for resource in recipe.outputs):
-            for item_rate in recipe_to_rates(recipe):
+            for item_rate in recipe.get_rates():
                 constraint_terms[item_rate.resource].append(variable * item_rate.rate)
 
     for item_rate in problem.inputs:
@@ -116,3 +113,4 @@ def main(args):
     game_data = game_parse.get_docs()
     result = optimize(Problem(target, inputs), game_data)
     print(result)
+    return result

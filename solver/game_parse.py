@@ -3,6 +3,8 @@ import json
 import yaml
 from os import sep, path
 import re
+
+from solver.resources import ItemRate
 from .util import to_from_dict
 
 class GameData:
@@ -56,17 +58,35 @@ class Item:
         return self.id
 
 
-@to_from_dict(["display", "id", "inputs", "outputs", "machine"])
+@to_from_dict(["display", "id", "inputs", "outputs", "machine", "duration"])
 class Recipe:
     PAR_PAT = re.compile(r"\((.*)\)")
     AMT_PAT = re.compile(r"\(.*?\.(.+?)\"',Amount=(\d+)\)")
 
-    def __init__(self, display, id, inputs, outputs, machine):
+    def __init__(self, display, id, inputs, outputs, machine, duration):
         self.display = display
         self.id = id
         self.inputs = inputs
         self.outputs = outputs
         self.machine = machine
+        self.duration = duration
+
+    def input_rates(self):
+        return [
+            ItemRate(resource_id, amount / self.duration) for resource_id, amount in self.inputs.items()
+        ]
+
+    def output_rates(self):
+        return [
+            ItemRate(resource_id, amount / self.duration) for resource_id, amount in self.outputs.items()
+        ]
+
+    def get_rates(self):
+        return [
+            ItemRate(resource_id, -amount / self.duration) for resource_id, amount in self.inputs.items()
+        ] + [
+            ItemRate(resource_id, amount / self.duration) for resource_id, amount in self.outputs.items()
+        ]
 
     @classmethod
     def from_node(cls, node, machine_set):
@@ -78,7 +98,8 @@ class Recipe:
         machines = machines if machines is not None else []
         machines = [machine for machine in machines if machine in machine_set]
         assert len(machines) <= 1
-        return cls(display, id, inputs, output, machines[0] if len(machines) == 1 else None)
+        duration = float(node["mManufactoringDuration"]) / 60
+        return cls(display, id, inputs, output, machines[0] if len(machines) == 1 else None, duration)
 
     @staticmethod
     def parse_item_amount(str):

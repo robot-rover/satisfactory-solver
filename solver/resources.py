@@ -8,8 +8,8 @@ class ItemRate:
         self.resource = resource
         self.rate = rate
 
-    def __str__(self):
-        return f"{self.resource} @ {self.rate}/min"
+    def format(self, game_data):
+        return f"{game_data.items[self.resource].display} @ {self.rate}/min"
 
     def __repr__(self):
         return f"{self.resource!r}_{self.rate}"
