@@ -20,4 +20,5 @@ if __name__ == "__main__":
                             image_file='test.svg', dot_file='test.dot')
     else:
         from . import gui_qt
-        gui_qt.main()
+        gui = gui_qt.SatisfactorySolverMain(sys.argv)
+        gui.run()

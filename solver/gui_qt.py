@@ -1,9 +1,9 @@
-from PySide6.QtGui import QPixmap, QWheelEvent
 import PySide6.QtWidgets as qtw
 import PySide6.QtCore as qtc
 import PySide6.QtGui as qtg
 import PySide6.QtSvg as qtsvg
 import PySide6.QtSvgWidgets as qtsvgw
+
 from fuzzywuzzy import process
 import sys
 import yaml
@@ -70,14 +70,6 @@ class ItemSearchWidget(qtw.QLineEdit):
         self.clear()
 
 
-def make_rate_box(rate):
-    group_widget = qtw.QSpinBox()
-    group_widget.setMaximum(2**31-1)
-    group_widget.setMinimum(-2**31)
-    group_widget.setValue(rate)
-    return group_widget
-
-
 class SchematicInputWidget(qtw.QWidget):
     def __init__(self, item, group_widget, check_delete=True):
         super().__init__()
@@ -104,6 +96,19 @@ class SchematicInputWidget(qtw.QWidget):
         if item is not None:
             self.setItem(item)
 
+    @classmethod
+    def with_spinbox(cls, item, rate):
+        group_widget = SchematicInputWidget.make_rate_box(rate)
+        return cls(item, group_widget)
+
+    @staticmethod
+    def make_rate_box(rate):
+        group_widget = qtw.QSpinBox()
+        group_widget.setMaximum(2**31-1)
+        group_widget.setMinimum(-2**31)
+        group_widget.setValue(rate)
+        return group_widget
+
     def setItem(self, item):
         self.item = item
         if item is not None:
@@ -114,7 +119,7 @@ class SchematicInputWidget(qtw.QWidget):
             self.group_box.setTitle('')
 
     def setIcon(self, icon_path):
-        self.icon = QPixmap(icon_path).scaledToHeight(
+        self.icon = qtg.QPixmap(icon_path).scaledToHeight(
             50, qtc.Qt.SmoothTransformation)
         self.icon_label.setPixmap(self.icon)
 
@@ -145,10 +150,10 @@ class ZoomingGraphicsView(qtw.QGraphicsView):
     def __init__(self, scene):
         super().__init__(scene)
 
-    # https://stackoverflow.com/questions/19113532/qgraphicsview-zooming-in-and-out-under-mouse-position-using-mouse-wheel
     def wheelEvent(self, event):
         modifiers = event.modifiers()
         if modifiers & qtc.Qt.ControlModifier:
+            # https://stackoverflow.com/questions/19113532/qgraphicsview-zooming-in-and-out-under-mouse-position-using-mouse-wheel
             zoomInFactor = 1.25
             zoomOutFactor = 1 / zoomInFactor
 
@@ -170,188 +175,199 @@ class ZoomingGraphicsView(qtw.QGraphicsView):
             delta = newPos - oldPos
             self.translate(delta.x(), delta.y())
         elif modifiers & qtc.Qt.ShiftModifier:
+            # Implement Horizontal Scrolling
             angle_delta = qtc.QPoint(
                 event.angleDelta().y(), event.angleDelta().x())
             pixel_delta = qtc.QPoint(
                 event.pixelDelta().y(), event.pixelDelta().x())
-            new_event = QWheelEvent(event.position(), event.globalPosition(), pixel_delta, angle_delta, event.buttons(
+            new_event = qtg.QWheelEvent(event.position(), event.globalPosition(), pixel_delta, angle_delta, event.buttons(
             ), modifiers & (~qtc.Qt.ShiftModifier), event.phase(), event.inverted(), event.source())
             super().wheelEvent(new_event)
         else:
+            # Default to Vertical Scrolling
             super().wheelEvent(event)
 
 
-def main():
-    game_data = game_parse.get_docs()
-    items = game_data.items
-    item_lookup = {item.display: item for item in items.values()}
+class SatisfactorySolverMain(qtw.QApplication):
+    def __init__(self, args):
+        super().__init__(args)
+        self.game_data = game_parse.get_docs()
+        self.item_lookup = {
+            item.display: item for item in self.game_data.items.values()}
 
-    solution = None
-    current_file = None
+        self.solution = None
+        self.current_file = None
 
-    app = qtw.QApplication(sys.argv)
-    w = qtw.QMainWindow()
-    central_widget = qtw.QWidget()
-    w.setCentralWidget(central_widget)
-    w.setWindowTitle("Satisfactory Solver")
-    w.resize(900, 600)
+        self.w = qtw.QMainWindow()
+        self.central_widget = qtw.QWidget()
+        self.w.setCentralWidget(self.central_widget)
+        self.w.setWindowTitle("Satisfactory Solver")
+        self.w.resize(900, 600)
 
-    wlayout = qtw.QHBoxLayout()
-    central_widget.setLayout(wlayout)
+        self.center_layout = qtw.QHBoxLayout()
+        self.central_widget.setLayout(self.center_layout)
 
-    input_layout = qtw.QVBoxLayout()
-    wlayout.addLayout(input_layout)
+        self.input_layout = qtw.QVBoxLayout()
+        self.center_layout.addLayout(self.input_layout)
 
-    input_search_box = ItemSearchWidget(None, item_lookup)
-    input_layout.addWidget(input_search_box)
+        self.input_search_box = ItemSearchWidget(None, self.item_lookup)
+        self.input_layout.addWidget(self.input_search_box)
 
-    input_scroll = qtw.QScrollArea()
-    input_scroll.setWidgetResizable(True)
-    input_scroll.setHorizontalScrollBarPolicy(qtc.Qt.ScrollBarAlwaysOff)
-    input_layout.addWidget(input_scroll)
+        self.input_scroll = qtw.QScrollArea()
+        self.input_scroll.setWidgetResizable(True)
+        self.input_scroll.setHorizontalScrollBarPolicy(
+            qtc.Qt.ScrollBarAlwaysOff)
+        self.input_layout.addWidget(self.input_scroll)
 
-    input_scroll_holdee = WidthAnchor(input_scroll)
-    input_list = qtw.QVBoxLayout(input_scroll_holdee)
-    input_scroll_holdee.setLayout(input_list)
-    input_list.insertStretch(-1)
-    input_list.setSpacing(0)
-    input_scroll.setWidget(input_scroll_holdee)
+        self.input_scroll_holdee = WidthAnchor(self.input_scroll)
+        self.input_list = qtw.QVBoxLayout(self.input_scroll_holdee)
+        self.input_scroll_holdee.setLayout(self.input_list)
+        self.input_list.insertStretch(-1)
+        self.input_list.setSpacing(0)
+        self.input_scroll.setWidget(self.input_scroll_holdee)
 
-    def add_input(item, rate=0):
-        widget = SchematicInputWidget(item, make_rate_box(rate))
-        input_list.insertWidget(input_list.count() - 1, widget)
+        self.input_search_box.callback = self.add_input
 
-    input_search_box.callback = add_input
+        self.output_search = ItemSearchWidget(None, self.item_lookup)
+        self.input_layout.addWidget(self.output_search)
+        self.go_box = qtw.QPushButton("Go!")
+        self.output_show_box = SchematicInputWidget(None, self.go_box, False)
+        self.output_show_box.setIcon(OUTPUT_ICON)
+        self.input_layout.addWidget(self.output_show_box)
 
-    output_search_box = ItemSearchWidget(None, item_lookup)
-    input_layout.addWidget(output_search_box)
-    go_box = qtw.QPushButton("Go!")
-    output_show_box = SchematicInputWidget(None, go_box, False)
-    output_show_box.setIcon(OUTPUT_ICON)
-    input_layout.addWidget(output_show_box)
+        self.output_search.callback = self.output_show_box.setItem
 
-    output_search_box.callback = output_show_box.setItem
+        self.svg_scene = qtw.QGraphicsScene()
+        self.svg_view = ZoomingGraphicsView(self.svg_scene)
+        self.svg_item = qtsvgw.QGraphicsSvgItem()
+        self.svg_renderer = qtsvg.QSvgRenderer()
+        self.svg_item.setSharedRenderer(self.svg_renderer)
+        self.svg_scene.addItem(self.svg_item)
 
-    svg_scene = qtw.QGraphicsScene()
-    svg_view = ZoomingGraphicsView(svg_scene)
-    svg_item = qtsvgw.QGraphicsSvgItem()
-    svg_renderer = qtsvg.QSvgRenderer()
-    svg_item.setSharedRenderer(svg_renderer)
-    svg_scene.addItem(svg_item)
+        self.center_layout.addWidget(self.svg_view, 1)
 
-    wlayout.addWidget(svg_view, 1)
+        self.go_box.clicked.connect(self.go_fn)
 
-    def get_problem():
-        if output_show_box.getItem() is None:
+        self.setup_menu()
+
+        if len(args) > 1:
+            self.current_file = args[1]
+            self.open_plan(True)
+
+    def setup_menu(self):
+        self.file_menu = self.w.menuBar().addMenu("&File")
+        self.file_menu_actions = []
+
+        newAct = qtg.QAction('&New')
+        newAct.setShortcut(qtg.QKeySequence.New)
+        newAct.setStatusTip('Create a new Design')
+        newAct.triggered.connect(self.clearWindow)
+        self.file_menu.addAction(newAct)
+        self.file_menu_actions.append(newAct)
+
+        openAct = qtg.QAction('&Open')
+        openAct.setShortcut(qtg.QKeySequence.Open)
+        openAct.setStatusTip('Open an existing Design Plan')
+        openAct.triggered.connect(self.open_plan)
+        self.file_menu.addAction(openAct)
+        self.file_menu_actions.append(openAct)
+
+        saveAct = qtg.QAction('&Save Plan')
+        saveAct.setShortcut(qtg.QKeySequence.Save)
+        saveAct.setStatusTip('Save the Design Plan')
+        saveAct.triggered.connect(lambda: self.save_plan(False))
+        self.file_menu.addAction(saveAct)
+        self.file_menu_actions.append(saveAct)
+
+        saveAsAct = qtg.QAction('Save Plan &As')
+        saveAsAct.setShortcut(qtg.QKeySequence.SaveAs)
+        saveAsAct.setStatusTip('Save the Design Plan As')
+        saveAsAct.triggered.connect(lambda: self.save_plan(True))
+        self.file_menu.addAction(saveAsAct)
+        self.file_menu_actions.append(saveAsAct)
+
+        svgAct = qtg.QAction('&Export Image')
+        svgAct.setShortcut(qtg.QKeySequence(qtc.Qt.CTRL | qtc.Qt.Key_E))
+        svgAct.setStatusTip('Save the implementation Image')
+        svgAct.triggered.connect(self.saveSvg)
+        self.file_menu.addAction(svgAct)
+        self.file_menu_actions.append(svgAct)
+
+        quitAct = qtg.QAction('&Quit')
+        quitAct.setShortcut(qtg.QKeySequence(qtc.Qt.CTRL | qtc.Qt.Key_Q))
+        quitAct.setStatusTip('Quit the application')
+        quitAct.triggered.connect(self.quit)  # TODO prompt for save
+        self.file_menu.addAction(quitAct)
+        self.file_menu_actions.append(quitAct)
+
+    def clearWindow(self):
+        self.solution = None
+        self.svg_renderer.deleteLater()
+        self.svg_renderer = qtsvg.QSvgRenderer()
+        self.svg_item.setSharedRenderer(self.svg_renderer)
+        while self.input_list.count() > 1:
+            self.input_list.takeAt(0).widget().deleteLater()
+        self.output_show_box.setItem(None)
+        self.output_show_box.setIcon(OUTPUT_ICON)
+
+    def add_input(self, item, rate=0):
+        widget = SchematicInputWidget.with_spinbox(item, rate)
+        self.input_list.insertWidget(self.input_list.count() - 1, widget)
+
+    def get_problem(self):
+        if self.output_show_box.getItem() is None:
             return None
-        target = output_show_box.getItem().id
+        target = self.output_show_box.getItem().id
 
-        def get_item_box(index):
-            return input_list.itemAt(index).widget()
         inputs = [
-            ItemRate(get_item_box(i).getItem().id, get_item_box(i).getRate()) for i in range(input_list.count() - 1)
+            ItemRate(item_box.getItem().id, item_box.getRate()) for item_box in
+            (self.input_list.itemAt(i).widget()
+             for i in range(self.input_list.count() - 1))
         ]
         return solve.Problem(target, inputs)
 
-    def go_fn():
-        nonlocal solution
-        problem = get_problem()
+    def go_fn(self):
+        problem = self.get_problem()
         if problem is None:
-            qtw.QMessageBox.warning(w, "Select a Target!",
+            qtw.QMessageBox.warning(self.w, "Select a Target!",
                                     "Please select a target item before solving.")
             return
-        solution = solve.optimize(problem, game_data)
-        print(solution)
-        visualize(solution, game_data, image_file='.temp.svg')
-        svg_item.renderer().load('.temp.svg')
-        svg_item.setElementId('')
+        self.solution = solve.optimize(problem, self.game_data)
+        print(self.solution)
+        visualize(self.solution, self.game_data, image_file='.temp.svg')
+        self.svg_renderer.load('.temp.svg')
+        self.svg_item.setElementId('')
 
-    go_box.clicked.connect(go_fn)
-
-    file_menu = w.menuBar().addMenu("&File")
-
-    def clearWindow():
-        nonlocal svg_renderer, solution
-        solution = None
-        svg_renderer.deleteLater()
-        svg_renderer = qtsvg.QSvgRenderer()
-        svg_item.setSharedRenderer(svg_renderer)
-        while input_list.count() > 1:
-            input_list.takeAt(0).widget().deleteLater()
-        output_show_box.setItem(None)
-        output_show_box.setIcon(OUTPUT_ICON)
-
-    newAct = qtg.QAction('&New')
-    newAct.setShortcut(qtg.QKeySequence.New)
-    newAct.setStatusTip('Create a new Design')
-    newAct.triggered.connect(clearWindow)
-    file_menu.addAction(newAct)
-
-    def open_plan(direct=False):
-        nonlocal current_file
+    def open_plan(self, direct=False):
         if not direct:
-            current_file, file_type = qtw.QFileDialog.getOpenFileName(
-                w, 'Open Factory Plan', '.', 'Factory Plan (*.yaml)'
+            self.current_file, file_type = qtw.QFileDialog.getOpenFileName(
+                self.w, 'Open Factory Plan', '.', 'Factory Plan (*.yaml)'
             )
-        with open(current_file, 'r') as file:
+        with open(self.current_file, 'r') as file:
             plan = solve.Problem.from_dict(yaml.load(file))
-        output_show_box.setItem(game_data.items[plan.target])
+        self.output_show_box.setItem(self.game_data.items[plan.target])
         for ir in plan.inputs:
-            item = game_data.items[ir.resource]
-            add_input(item, ir.rate)
-        go_fn()
+            item = self.game_data.items[ir.resource]
+            self.add_input(item, ir.rate)
+        self.go_fn()
 
-    openAct = qtg.QAction('&Open')
-    openAct.setShortcut(qtg.QKeySequence.Open)
-    openAct.setStatusTip('Open an existing Design Plan')
-    openAct.triggered.connect(open_plan)
-    file_menu.addAction(openAct)
-
-    def save_plan(save_as):
-        nonlocal current_file
-        problem = get_problem()
+    def save_plan(self, save_as):
+        problem = self.get_problem()
         if problem is None:
-            qtw.QMessageBox.warning(w, "Select a Target!",
+            qtw.QMessageBox.warning(self.w, "Select a Target!",
                                     "Please select a target item before saving.")
             return
-        if save_as or current_file is None:
-            current_file, file_type = qtw.QFileDialog.getSaveFileName(
-                w, "Save Factory Plan", 'factory.yaml', 'Factory Plan (*.yaml)')
-        with open(current_file, 'w') as file:
+        if save_as or self.current_file is None:
+            self.current_file, file_type = qtw.QFileDialog.getSaveFileName(
+                self.w, "Save Factory Plan", 'factory.yaml', 'Factory Plan (*.yaml)')
+        with open(self.current_file, 'w') as file:
             yaml.dump(problem.to_dict(), file)
 
-    saveAct = qtg.QAction('&Save Plan')
-    saveAct.setShortcut(qtg.QKeySequence.Save)
-    saveAct.setStatusTip('Save the Design Plan')
-    saveAct.triggered.connect(lambda: save_plan(False))
-    file_menu.addAction(saveAct)
-
-    saveAsAct = qtg.QAction('Save Plan &As')
-    saveAsAct.setShortcut(qtg.QKeySequence.SaveAs)
-    saveAsAct.setStatusTip('Save the Design Plan As')
-    saveAsAct.triggered.connect(lambda: save_plan(True))
-    file_menu.addAction(saveAsAct)
-
-    def saveSvg():
+    def saveSvg(self):
         filename, img_kind = qtw.QFileDialog.getSaveFileName(
-            w, "Save Implementation Image File", 'factory.svg', 'Vector Image (*.svg);;Raster Image (*.png)')
-        visualize(solution, game_data, image_file=filename)
+            self.w, "Save Implementation Image File", 'factory.svg', 'Vector Image (*.svg);;Raster Image (*.png)')
+        visualize(self.solution, self.game_data, image_file=filename)
 
-    svgAct = qtg.QAction('&Export Image')
-    svgAct.setShortcut(qtg.QKeySequence(qtc.Qt.CTRL | qtc.Qt.Key_E))
-    svgAct.setStatusTip('Save the implementation Image')
-    svgAct.triggered.connect(saveSvg)
-    file_menu.addAction(svgAct)
-
-    quitAct = qtg.QAction('&Quit')
-    quitAct.setShortcut(qtg.QKeySequence(qtc.Qt.CTRL | qtc.Qt.Key_Q))
-    quitAct.setStatusTip('Quit the application')
-    quitAct.triggered.connect(app.quit)  # TODO prompt for save
-    file_menu.addAction(quitAct)
-
-    if len(sys.argv) > 1:
-        current_file = sys.argv[1]
-        open_plan(True)
-
-    w.show()
-    sys.exit(app.exec_())
+    def run(self):
+        self.w.show()
+        sys.exit(self.exec_())
