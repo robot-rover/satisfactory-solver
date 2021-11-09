@@ -1,4 +1,5 @@
 from .resources import ItemRate
+from .util import to_from_dict
 
 import math
 
@@ -10,6 +11,20 @@ class Problem:
         self.target = target
         self.inputs = inputs
 
+    def to_dict(self):
+        return {
+            'target': self.target,
+            'inputs': {
+                ir.resource: ir.rate for ir in self.inputs
+            }
+        }
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(target=d['target'], inputs=[
+            ItemRate(key, val) for key, val in d['inputs'].items()
+        ])
+
 
 class Result:
     def __init__(self, problem, objective, recipes, outputs):
@@ -17,6 +32,24 @@ class Result:
         self.objective = objective
         self.recipes = recipes
         self.outputs = outputs
+
+    def to_dict(self):
+        return {
+            'problem': self.problem.to_dict(),
+            'objective': self.objective,
+            'recipes': self.recipes,
+            'outputs': {ir.resource: ir.rate for ir in self.outputs}
+        }
+
+    def from_dict(cls, d):
+        return cls(
+            problem=Problem.from_dict(d['problem']),
+            objective=d['objective'],
+            recipes=d['recipes'],
+            outputs=[
+                ItemRate(key, val) for key, val in d['outputs'].items()
+            ]
+        )
 
     def __repr__(self):
         return "\n".join([
@@ -99,7 +132,7 @@ def optimize(problem, game_data):
         },
             [
             ItemRate(resource, constraint[0].value()) for resource, constraint in constraints.items()
-            if not math.isclose(constraint[0].value(), 0, abs_tol=0.00001)
+            if not math.isclose(constraint[0].value(), 0, rel_tol=0.00001, abs_tol=0.00001)
         ])
         return result
 

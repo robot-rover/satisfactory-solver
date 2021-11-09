@@ -1,4 +1,4 @@
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QWheelEvent
 import PySide6.QtWidgets as qtw
 import PySide6.QtCore as qtc
 import PySide6.QtGui as qtg
@@ -6,7 +6,7 @@ import PySide6.QtSvg as qtsvg
 import PySide6.QtSvgWidgets as qtsvgw
 from fuzzywuzzy import process
 import sys
-import shutil
+import yaml
 
 from solver.solve import Problem
 from solver.visualize import visualize
@@ -130,7 +130,7 @@ class SchematicInputWidget(qtw.QWidget):
             self.deleteLater()
 
 
-class TestWidget(qtw.QWidget):
+class WidthAnchor(qtw.QWidget):
     def __init__(self, scroll_area):
         super().__init__()
         self.scroll_area = scroll_area
@@ -138,8 +138,47 @@ class TestWidget(qtw.QWidget):
     def resizeEvent(self, event):
         width = self.scroll_area.width() - self.scroll_area.viewport().width() + \
             event.size().width()
-        print(f'Width: {width}')
         self.scroll_area.setMinimumWidth(width)
+
+
+class ZoomingGraphicsView(qtw.QGraphicsView):
+    def __init__(self, scene):
+        super().__init__(scene)
+
+    # https://stackoverflow.com/questions/19113532/qgraphicsview-zooming-in-and-out-under-mouse-position-using-mouse-wheel
+    def wheelEvent(self, event):
+        modifiers = event.modifiers()
+        if modifiers & qtc.Qt.ControlModifier:
+            zoomInFactor = 1.25
+            zoomOutFactor = 1 / zoomInFactor
+
+            # Save the scene pos
+            oldPos = event.position()
+            unmapped_pos = self.mapFromScene(oldPos)
+
+            # Zoom
+            if event.angleDelta().y() > 0:
+                zoomFactor = zoomInFactor
+            else:
+                zoomFactor = zoomOutFactor
+            self.scale(zoomFactor, zoomFactor)
+
+            # Get the new position
+            newPos = self.mapToScene(unmapped_pos)
+
+            # Move scene to old position
+            delta = newPos - oldPos
+            self.translate(delta.x(), delta.y())
+        elif modifiers & qtc.Qt.ShiftModifier:
+            angle_delta = qtc.QPoint(
+                event.angleDelta().y(), event.angleDelta().x())
+            pixel_delta = qtc.QPoint(
+                event.pixelDelta().y(), event.pixelDelta().x())
+            new_event = QWheelEvent(event.position(), event.globalPosition(), pixel_delta, angle_delta, event.buttons(
+            ), modifiers & (~qtc.Qt.ShiftModifier), event.phase(), event.inverted(), event.source())
+            super().wheelEvent(new_event)
+        else:
+            super().wheelEvent(event)
 
 
 def main():
@@ -148,6 +187,7 @@ def main():
     item_lookup = {item.display: item for item in items.values()}
 
     solution = None
+    current_file = None
 
     app = qtw.QApplication(sys.argv)
     w = qtw.QMainWindow()
@@ -170,15 +210,15 @@ def main():
     input_scroll.setHorizontalScrollBarPolicy(qtc.Qt.ScrollBarAlwaysOff)
     input_layout.addWidget(input_scroll)
 
-    input_scroll_holdee = TestWidget(input_scroll)
+    input_scroll_holdee = WidthAnchor(input_scroll)
     input_list = qtw.QVBoxLayout(input_scroll_holdee)
     input_scroll_holdee.setLayout(input_list)
     input_list.insertStretch(-1)
     input_list.setSpacing(0)
     input_scroll.setWidget(input_scroll_holdee)
 
-    def add_input(item):
-        widget = SchematicInputWidget(item, make_rate_box(0))
+    def add_input(item, rate=0):
+        widget = SchematicInputWidget(item, make_rate_box(rate))
         input_list.insertWidget(input_list.count() - 1, widget)
 
     input_search_box.callback = add_input
@@ -193,7 +233,7 @@ def main():
     output_search_box.callback = output_show_box.setItem
 
     svg_scene = qtw.QGraphicsScene()
-    svg_view = qtw.QGraphicsView(svg_scene)
+    svg_view = ZoomingGraphicsView(svg_scene)
     svg_item = qtsvgw.QGraphicsSvgItem()
     svg_renderer = qtsvg.QSvgRenderer()
     svg_item.setSharedRenderer(svg_renderer)
@@ -201,8 +241,9 @@ def main():
 
     wlayout.addWidget(svg_view, 1)
 
-    def go_fn():
-        nonlocal solution
+    def get_problem():
+        if output_show_box.getItem() is None:
+            return None
         target = output_show_box.getItem().id
 
         def get_item_box(index):
@@ -210,13 +251,18 @@ def main():
         inputs = [
             ItemRate(get_item_box(i).getItem().id, get_item_box(i).getRate()) for i in range(input_list.count() - 1)
         ]
-        print('Inputs:', inputs)
-        problem = solve.Problem(target, inputs)
+        return solve.Problem(target, inputs)
+
+    def go_fn():
+        nonlocal solution
+        problem = get_problem()
+        if problem is None:
+            qtw.QMessageBox.warning(w, "Select a Target!",
+                                    "Please select a target item before solving.")
+            return
         solution = solve.optimize(problem, game_data)
         print(solution)
         visualize(solution, game_data, image_file='.temp.svg')
-        print(svg_item)
-        print(svg_item.renderer())
         svg_item.renderer().load('.temp.svg')
         svg_item.setElementId('')
 
@@ -241,22 +287,49 @@ def main():
     newAct.triggered.connect(clearWindow)
     file_menu.addAction(newAct)
 
+    def open_plan(direct=False):
+        nonlocal current_file
+        if not direct:
+            current_file, file_type = qtw.QFileDialog.getOpenFileName(
+                w, 'Open Factory Plan', '.', 'Factory Plan (*.yaml)'
+            )
+        with open(current_file, 'r') as file:
+            plan = solve.Problem.from_dict(yaml.load(file))
+        output_show_box.setItem(game_data.items[plan.target])
+        for ir in plan.inputs:
+            item = game_data.items[ir.resource]
+            add_input(item, ir.rate)
+        go_fn()
+
     openAct = qtg.QAction('&Open')
     openAct.setShortcut(qtg.QKeySequence.Open)
     openAct.setStatusTip('Open an existing Design Plan')
-    openAct.triggered.connect(lambda *args: print(f'Open File: {args}'))
+    openAct.triggered.connect(open_plan)
     file_menu.addAction(openAct)
+
+    def save_plan(save_as):
+        nonlocal current_file
+        problem = get_problem()
+        if problem is None:
+            qtw.QMessageBox.warning(w, "Select a Target!",
+                                    "Please select a target item before saving.")
+            return
+        if save_as or current_file is None:
+            current_file, file_type = qtw.QFileDialog.getSaveFileName(
+                w, "Save Factory Plan", 'factory.yaml', 'Factory Plan (*.yaml)')
+        with open(current_file, 'w') as file:
+            yaml.dump(problem.to_dict(), file)
 
     saveAct = qtg.QAction('&Save Plan')
     saveAct.setShortcut(qtg.QKeySequence.Save)
     saveAct.setStatusTip('Save the Design Plan')
-    saveAct.triggered.connect(lambda *args: print(f'Save Plan: {args}'))
+    saveAct.triggered.connect(lambda: save_plan(False))
     file_menu.addAction(saveAct)
 
     saveAsAct = qtg.QAction('Save Plan &As')
     saveAsAct.setShortcut(qtg.QKeySequence.SaveAs)
     saveAsAct.setStatusTip('Save the Design Plan As')
-    saveAsAct.triggered.connect(lambda *args: print(f'Save As Plan: {args}'))
+    saveAsAct.triggered.connect(lambda: save_plan(True))
     file_menu.addAction(saveAsAct)
 
     def saveSvg():
@@ -269,6 +342,16 @@ def main():
     svgAct.setStatusTip('Save the implementation Image')
     svgAct.triggered.connect(saveSvg)
     file_menu.addAction(svgAct)
+
+    quitAct = qtg.QAction('&Quit')
+    quitAct.setShortcut(qtg.QKeySequence(qtc.Qt.CTRL | qtc.Qt.Key_Q))
+    quitAct.setStatusTip('Quit the application')
+    quitAct.triggered.connect(app.quit)  # TODO prompt for save
+    file_menu.addAction(quitAct)
+
+    if len(sys.argv) > 1:
+        current_file = sys.argv[1]
+        open_plan(True)
 
     w.show()
     sys.exit(app.exec_())

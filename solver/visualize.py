@@ -37,11 +37,11 @@ def visualize(result, game_data, image_file=None, dot_file=None, layout='dot'):
 
     for recipe, quantity in recipes.items():
         machine_name = game_data.machines[recipe.machine].display
-        inputs = ','.join(
+        inputs = ', '.join(
             f'{game_data.items[rate.resource].display}: {rate.rate}' for rate in recipe.input_rates()
         )
 
-        outputs = ','.join(
+        outputs = ', '.join(
             f'{game_data.items[rate.resource].display}: {rate.rate}' for rate in recipe.output_rates()
         )
 
