@@ -1,3 +1,4 @@
+from math import dist
 import PySide6.QtWidgets as qtw
 import PySide6.QtCore as qtc
 import PySide6.QtGui as qtg
@@ -314,11 +315,18 @@ class SatisfactorySolverMain(qtw.QApplication):
         self.edit_menu = self.w.menuBar().addMenu("&Edit")
         self.edit_menu_actions = []
 
-        recipeAct = qtg.QAction('&Recipes')
-        recipeAct.setStatusTip('Edit the Enabled Alternate Recipes')
+        recipeAct = qtg.QAction('Enabled &Recipes')
+        recipeAct.setStatusTip('Edit the Enabled Recipes')
         recipeAct.triggered.connect(self.recipe_window.show)
         self.edit_menu.addAction(recipeAct)
         self.edit_menu_actions.append(recipeAct)
+
+        self.distAct = qtg.QAction('&Distribute Machines')
+        self.distAct.setStatusTip('Show a recipe quantity distributed across an integer number of machines')
+        self.distAct.setCheckable(True)
+        self.edit_menu.addAction(self.distAct)
+        self.edit_menu_actions.append(self.distAct)
+
 
     def clearWindow(self):
         self.solution = None
@@ -355,7 +363,7 @@ class SatisfactorySolverMain(qtw.QApplication):
         self.solution = solve.optimize(
             problem, self.game_data, self.recipe_window.to_recipe_config())
         print(self.solution)
-        visualize(self.solution, self.game_data, image_file='.temp.svg')
+        visualize(self.solution, self.game_data, image_file='.temp.svg', recipe_distribute=self.distAct.isChecked())
         self.svg_renderer.load('.temp.svg')
         self.svg_item.setElementId('')
 
@@ -395,7 +403,7 @@ class SatisfactorySolverMain(qtw.QApplication):
             self.w, "Save Implementation Image File", 'factory.svg', 'Vector Image (*.svg);;Raster Image (*.png)')
         if filename == '':
             return
-        visualize(self.solution, self.game_data, image_file=filename)
+        visualize(self.solution, self.game_data, image_file=filename, recipe_distribute=self.distAct.isChecked())
 
     def run(self):
         self.w.show()

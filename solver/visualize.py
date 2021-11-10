@@ -1,7 +1,8 @@
+import math
 import pygraphviz as pgv
 
 
-def visualize(result, game_data, image_file=None, dot_file=None, layout='dot'):
+def visualize(result, game_data, image_file=None, dot_file=None, layout='dot', recipe_distribute=True):
     graph = pgv.AGraph(directed=True, strict=True,
                        name=repr(result.problem.target))
 
@@ -45,7 +46,14 @@ def visualize(result, game_data, image_file=None, dot_file=None, layout='dot'):
             f'{game_data.items[rate.resource].display}: {rate.rate}' for rate in recipe.output_rates()
         )
 
-        name = f"{recipe.display}\n{machine_name} x{round(quantity, 3)}\n{inputs}\n{outputs}"
+        distribute_string = ""
+        num_machines = math.ceil(quantity)
+        if recipe_distribute and num_machines > 1:
+            num_machines = math.ceil(quantity)
+            per_machine = quantity / num_machines
+            distribute_string = f'(x{num_machines} @ {per_machine})\n'
+
+        name = f"{recipe.display}\n{machine_name} x{round(quantity, 3)}\n{distribute_string}{inputs}\n{outputs}"
         graph.add_node(recipe.id, label=name)
         for ir in recipe.input_rates():
             graph.add_edge(new_resource(ir.resource), recipe.id,
