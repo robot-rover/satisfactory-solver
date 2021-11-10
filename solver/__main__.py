@@ -12,7 +12,8 @@ if __name__ == "__main__":
     #     visualize(result, image_file=f"{factory.name}.png")
     if len(sys.argv) > 1 and sys.argv[1] == 'parse':
         from . import game_parse
-        game_parse.main(sys.argv[2] if len(sys.argv) > 2 else None)
+        game_parse.main(sys.argv[2] if len(sys.argv) >
+                        2 else game_parse.DOC_JSON_PATH)
     elif len(sys.argv) > 1 and sys.argv[1] == 'solve':
         from . import solve, visualize, game_parse
         result = solve.main(sys.argv[2:])

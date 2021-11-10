@@ -1,8 +1,3 @@
-def _format_name(snake_case):
-    words = snake_case.split('_')
-    return " ".join(word.capitalize() for word in words)
-
-
 class ItemRate:
     def __init__(self, resource, rate):
         assert isinstance(resource, str)

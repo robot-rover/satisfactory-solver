@@ -8,6 +8,8 @@ import itertools
 from solver.resources import ItemRate
 from .util import to_from_dict
 
+DOC_JSON_PATH = './Docs.json'
+
 
 class GameData:
     def __init__(self, items, recipes, machines):
@@ -33,16 +35,6 @@ class GameData:
             machines={
             id: Machine.from_dict(mdict) for id, mdict in d['machines'].items()
         })
-
-
-DOCS_JSON_OPTIONS = [
-    "./Docs.json",
-    "%steamapps%/common/Satisfactory/CommunityResources/Docs/Docs.json",
-    "C://Program Files (x86)/Steam/steamapps/common/Satisfactory/CommunityResources/Docs/Docs.json",
-    "E://SteamLibrary/steamapps/common/Satisfactory/CommunityResources/Docs/Docs.json",
-    "/mnt/c/Program Files (x86)/Steam/steamapps/common/Satisfactory/CommunityResources/Docs/Docs.json",
-    "/mnt/e/SteamLibrary/steamapps/common/Satisfactory/CommunityResources/Docs/Docs.json"
-]
 
 
 @to_from_dict(['display', 'id', 'description', 'form', 'icon'])
@@ -243,12 +235,7 @@ def export_docs(game_data, generate_path='./'):
         yaml.dump(game_data.to_dict(), data_file)
 
 
-def scrape_docs(doc_path=None):
-    if doc_path is None:
-        try:
-            doc_path = next(p for p in DOCS_JSON_OPTIONS if path.exists(p))
-        except StopIteration:
-            raise RuntimeError("No Satisfactory Configuration Found!")
+def scrape_docs(doc_path=DOC_JSON_PATH):
     with open(doc_path, "r", encoding="utf16") as file:
         docs = json.load(file)
         docs = {item["NativeClass"]: item["Classes"] for item in docs}
@@ -302,7 +289,7 @@ def scrape_docs(doc_path=None):
         return GameData(items, filtered_recipes, machines)
 
 
-def get_docs(yaml_path="./", doc_path=None):
+def get_docs(yaml_path="./", doc_path=DOC_JSON_PATH):
     try:
         with open(yaml_path + "game_data.yaml", 'r') as data_stream:
             data = yaml.safe_load(data_stream)
@@ -321,7 +308,7 @@ def get_docs(yaml_path="./", doc_path=None):
         return scrape_docs(doc_path)
 
 
-def main(path=None):
+def main(path=DOC_JSON_PATH):
     from sys import argv
     game_data = scrape_docs(path)
     export_docs(game_data)
