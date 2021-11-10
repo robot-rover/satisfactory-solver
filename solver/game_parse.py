@@ -3,15 +3,37 @@ import json
 import yaml
 from os import sep, path
 import re
+import itertools
 
 from solver.resources import ItemRate
 from .util import to_from_dict
+
 
 class GameData:
     def __init__(self, items, recipes, machines):
         self.items = items
         self.recipes = recipes
         self.machines = machines
+
+    def to_dict(self):
+        return {
+            'items': {item.id: item.to_dict() for item in self.items.values()},
+            'recipes': {recipe.id: recipe.to_dict() for recipe in self.recipes.values()},
+            'machines': {machine.id: machine.to_dict() for machine in self.machines.values()}
+        }
+
+    @classmethod
+    def from_dict(cls, d):
+        return GameData(items={
+            id: Item.from_dict(idict) for id, idict in d['items'].items()
+        },
+            recipes={
+            id: Recipe.from_dict(rdict) for id, rdict in d['recipes'].items()
+        },
+            machines={
+            id: Machine.from_dict(mdict) for id, mdict in d['machines'].items()
+        })
+
 
 DOCS_JSON_OPTIONS = [
     "./Docs.json",
@@ -58,18 +80,19 @@ class Item:
         return self.id
 
 
-@to_from_dict(["display", "id", "inputs", "outputs", "machine", "duration"])
+@to_from_dict(["display", "id", "inputs", "outputs", "machine", "duration", 'alternate'])
 class Recipe:
     PAR_PAT = re.compile(r"\((.*)\)")
     AMT_PAT = re.compile(r"\(.*?\.(.+?)\"',Amount=(\d+)\)")
 
-    def __init__(self, display, id, inputs, outputs, machine, duration):
+    def __init__(self, display, id, inputs, outputs, machine, duration, alternate):
         self.display = display
         self.id = id
         self.inputs = inputs
         self.outputs = outputs
         self.machine = machine
         self.duration = duration
+        self.alternate = alternate
 
     def input_rates(self):
         return [
@@ -95,11 +118,12 @@ class Recipe:
         inputs = Recipe.parse_item_amount(node["mIngredients"])
         output = Recipe.parse_item_amount(node["mProduct"])
         machines = Recipe.parse_machines(node["mProducedIn"])
+        alternate = 'Alternate' in node['FullName']
         machines = machines if machines is not None else []
         machines = [machine for machine in machines if machine in machine_set]
         assert len(machines) <= 1
         duration = float(node["mManufactoringDuration"]) / 60
-        return cls(display, id, inputs, output, machines[0] if len(machines) == 1 else None, duration)
+        return cls(display, id, inputs, output, machines[0] if len(machines) == 1 else None, duration, alternate)
 
     @staticmethod
     def parse_item_amount(str):
@@ -156,7 +180,13 @@ class Machine:
         return self.name
 
 
-def scrape_docs(generate_path="./", doc_path=None):
+def export_docs(game_data, generate_path='./'):
+    with open(generate_path + "game_data.yaml", "w") as data_file:
+        print("Generating game_data.yaml")
+        yaml.dump(game_data.to_dict(), data_file)
+
+
+def scrape_docs(doc_path=None):
     if doc_path is None:
         try:
             doc_path = next(p for p in DOCS_JSON_OPTIONS if path.exists(p))
@@ -166,64 +196,57 @@ def scrape_docs(generate_path="./", doc_path=None):
         docs = json.load(file)
         docs = {item["NativeClass"]: item["Classes"] for item in docs}
 
-    with open(generate_path + "game_data.yaml", "w") as data_file:
-        print("Generating game_data.yaml")
-
-        items = [
-            Item.from_node(node).to_dict()
+        items = itertools.chain((
+            Item.from_node(node)
             for node in docs["Class'/Script/FactoryGame.FGItemDescriptor'"]
-        ] + [
-            Item.from_node(node).to_dict()
+        ), (
+            Item.from_node(node)
             for node in docs["Class'/Script/FactoryGame.FGResourceDescriptor'"]
-        ]
-
-        machines = [
-            Machine.from_node(node).to_dict() for node in docs["Class'/Script/FactoryGame.FGBuildableManufacturer'"]
-        ]
-
-        machine_set = set(machine['id'] for machine in machines)
-
-        recipes = [
-            Recipe.from_node(node, machine_set).to_dict() for node in docs["Class'/Script/FactoryGame.FGRecipe'"]
-        ]
-
-        game_data = {
-            'items': items,
-            'recipes': recipes,
-            'machines': machines
+        ))
+        items = {
+            item.id: item for item in items
         }
 
-        yaml.dump(game_data, data_file)
+        machines = (
+            Machine.from_node(node) for node in docs["Class'/Script/FactoryGame.FGBuildableManufacturer'"]
+        )
+        machines = {
+            machine.id: machine for machine in machines
+        }
+
+        recipes = (
+            Recipe.from_node(node, machines) for node in docs["Class'/Script/FactoryGame.FGRecipe'"]
+        )
+        recipes = {
+            recipe.id: recipe for recipe in recipes
+        }
+
+        return GameData(items, recipes, machines)
 
 
 def get_docs(yaml_path="./", doc_path=None):
-    def parse_items():
+    try:
         with open(yaml_path + "game_data.yaml", 'r') as data_stream:
             data = yaml.safe_load(data_stream)
         recipes = {
-            recipe["id"]: Recipe.from_dict(recipe) for recipe in data['recipes']
+            recipe["id"]: Recipe.from_dict(recipe) for recipe in data['recipes'].values()
         }
         items = {
-            item["id"]: Item.from_dict(item) for item in data['items']
+            item["id"]: Item.from_dict(item) for item in data['items'].values()
         }
         machines = {
-            machine['id']: Machine.from_dict(machine) for machine in data['machines']
+            machine['id']: Machine.from_dict(machine) for machine in data['machines'].values()
         }
         return GameData(items, recipes, machines)
 
-    try:
-        return parse_items()
     except FileNotFoundError:
-        if doc_path:
-            scrape_docs(yaml_path, doc_path)
-        else:
-            scrape_docs(yaml_path)
-        return parse_items()
+        return scrape_docs(doc_path)
 
 
 def main(path=None):
     from sys import argv
-    scrape_docs('./', path)
+    game_data = scrape_docs(path)
+    export_docs(game_data)
 
 
 if __name__ == "__main__":

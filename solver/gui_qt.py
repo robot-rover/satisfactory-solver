@@ -44,9 +44,15 @@ class FuzzyQCompleter(qtw.QCompleter):
 
 
 class ItemSearchWidget(qtw.QLineEdit):
-    def __init__(self, callback, items):
+    def __init__(self, default_text, items, shortcut=None):
         super().__init__()
-        self.callback = callback
+        self.callback = None
+        self.setPlaceholderText(default_text)
+
+        self.shortcut = shortcut
+        if self.shortcut is not None:
+            self.shortcut.activated.connect(
+                lambda: self.setFocus(qtc.Qt.ShortcutFocusReason))
 
         input_search_comp = FuzzyQCompleter(
             self, items)
@@ -210,7 +216,8 @@ class SatisfactorySolverMain(qtw.QApplication):
         self.input_layout = qtw.QVBoxLayout()
         self.center_layout.addLayout(self.input_layout)
 
-        self.input_search_box = ItemSearchWidget(None, self.item_lookup)
+        self.input_search_box = ItemSearchWidget(
+            'Add Input', self.item_lookup, qtg.QShortcut(qtg.QKeySequence(qtc.Qt.CTRL | qtc.Qt.Key_I), self.w))
         self.input_layout.addWidget(self.input_search_box)
 
         self.input_scroll = qtw.QScrollArea()
@@ -228,7 +235,8 @@ class SatisfactorySolverMain(qtw.QApplication):
 
         self.input_search_box.callback = self.add_input
 
-        self.output_search = ItemSearchWidget(None, self.item_lookup)
+        self.output_search = ItemSearchWidget(
+            'Set Target', self.item_lookup, qtg.QShortcut(qtg.QKeySequence(qtc.Qt.CTRL | qtc.Qt.Key_T), self.w))
         self.input_layout.addWidget(self.output_search)
         self.go_box = qtw.QPushButton("Go!")
         self.output_show_box = SchematicInputWidget(None, self.go_box, False)
@@ -340,9 +348,12 @@ class SatisfactorySolverMain(qtw.QApplication):
 
     def open_plan(self, direct=False):
         if not direct:
-            self.current_file, file_type = qtw.QFileDialog.getOpenFileName(
+            file_name, file_type = qtw.QFileDialog.getOpenFileName(
                 self.w, 'Open Factory Plan', '.', 'Factory Plan (*.yaml)'
             )
+            if file_name == '':
+                return
+            self.current_file = file_name
         with open(self.current_file, 'r') as file:
             plan = solve.Problem.from_dict(yaml.load(file))
         self.output_show_box.setItem(self.game_data.items[plan.target])
@@ -358,14 +369,19 @@ class SatisfactorySolverMain(qtw.QApplication):
                                     "Please select a target item before saving.")
             return
         if save_as or self.current_file is None:
-            self.current_file, file_type = qtw.QFileDialog.getSaveFileName(
+            file_name, file_type = qtw.QFileDialog.getSaveFileName(
                 self.w, "Save Factory Plan", 'factory.yaml', 'Factory Plan (*.yaml)')
+            if file_name == '':
+                return
+            self.current_file = file_name
         with open(self.current_file, 'w') as file:
             yaml.dump(problem.to_dict(), file)
 
     def saveSvg(self):
         filename, img_kind = qtw.QFileDialog.getSaveFileName(
             self.w, "Save Implementation Image File", 'factory.svg', 'Vector Image (*.svg);;Raster Image (*.png)')
+        if filename == '':
+            return
         visualize(self.solution, self.game_data, image_file=filename)
 
     def run(self):
