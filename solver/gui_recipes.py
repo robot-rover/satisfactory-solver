@@ -9,17 +9,28 @@ from .config import AlternateRecipeConfiguration
 
 
 class TreeItem:
-    def __init__(self, *args, recipe=None, label=None, checked=False, children=None):
+    def __init__(self, *args, recipe=None, game_data=None, label=None, checked=False, children=None):
         self.parent = None
         self.row = None
         assert recipe is not None or label is not None
         self.recipe = recipe
+        self.recipe_fmt = self.fmt_recipe(game_data)
         self.label = label
         self.children = []
         self.checked = checked
         if children is not None:
             for child in children:
                 self.add_child(child)
+
+    def fmt_recipe(self, game_data):
+        if self.recipe is None:
+            return None
+
+        inputs = ', '.join(
+            f'{game_data.items[id].display} x{rate}' for id, rate in self.recipe.inputs.items())
+        outputs = ', '.join(
+            f'{game_data.items[id].display} x{rate}' for id, rate in self.recipe.outputs.items())
+        return f'{inputs} -> {outputs}'
 
     def get_display(self):
         if self.recipe is not None:
@@ -126,6 +137,9 @@ class TreeModel(qtc.QAbstractItemModel):
         elif role == qtc.Qt.CheckStateRole:
             item = index.internalPointer()
             return item.checked
+        elif role == qtc.Qt.ToolTipRole:
+            item = index.internalPointer()
+            return item.recipe_fmt
         else:
             return None
 
@@ -314,6 +328,6 @@ class AlternateRecipeWindow(qtw.QWidget):
             parent = root
             for unlock_step in recipe.unlock:
                 parent = get_or_insert(parent, unlock_step)
-            parent.add_child(TreeItem(recipe=recipe))
+            parent.add_child(TreeItem(recipe=recipe, game_data=game_data))
 
         return root
