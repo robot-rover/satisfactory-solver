@@ -127,6 +127,7 @@ def optimize(problem, game_data, recipe_config):
         },
             [
             ItemRate(resource, constraint[0].value()) for resource, constraint in constraints.items()
+            if constraint[0].value() is not None
             if not math.isclose(constraint[0].value(), 0, rel_tol=0.00001, abs_tol=0.00001)
         ])
         return result
