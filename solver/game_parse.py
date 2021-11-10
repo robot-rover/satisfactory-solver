@@ -48,7 +48,7 @@ class Item:
 
     @classmethod
     def from_node(cls, node):
-        display = node["mDisplayName"]
+        display = node["mDisplayName"].replace("\u2122", "")
         id = node["ClassName"]
         description = node["mDescription"].replace("\r\n", "\n")
         form = node["mForm"]
@@ -62,6 +62,8 @@ class Item:
         else:
             raise AssertionError(f"Unknown form {form}")
         icon = prefix + display.replace(" ", "_") + ".png"
+        if id in ("Desc_GolfCart_C", "Desc_GolfCartGold_C"):
+            icon = 'icons/Vehicle/Factory_Cart.png'
         assert path.exists(icon), f"{icon} doesn't exist"
         return cls(display, id, description, form, icon)
 
@@ -246,6 +248,9 @@ def scrape_docs(doc_path=DOC_JSON_PATH):
         ), (
             Item.from_node(node)
             for node in docs["Class'/Script/FactoryGame.FGResourceDescriptor'"]
+        ), (
+            Item.from_node(node)
+            for node in docs["Class'/Script/FactoryGame.FGEquipmentDescriptor'"]
         ))
         items = {
             item.id: item for item in items
