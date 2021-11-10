@@ -80,19 +80,19 @@ class Item:
         return self.id
 
 
-@to_from_dict(["display", "id", "inputs", "outputs", "machine", "duration", 'alternate'])
+@to_from_dict(["display", "id", "inputs", "outputs", "machine", "duration", 'unlock'])
 class Recipe:
     PAR_PAT = re.compile(r"\((.*)\)")
     AMT_PAT = re.compile(r"\(.*?\.(.+?)\"',Amount=(\d+)\)")
 
-    def __init__(self, display, id, inputs, outputs, machine, duration, alternate):
+    def __init__(self, display, id, inputs, outputs, machine, duration, unlock):
         self.display = display
         self.id = id
         self.inputs = inputs
         self.outputs = outputs
         self.machine = machine
         self.duration = duration
-        self.alternate = alternate
+        self.unlock = unlock
 
     def input_rates(self):
         return [
@@ -118,12 +118,11 @@ class Recipe:
         inputs = Recipe.parse_item_amount(node["mIngredients"])
         output = Recipe.parse_item_amount(node["mProduct"])
         machines = Recipe.parse_machines(node["mProducedIn"])
-        alternate = 'Alternate' in node['FullName']
         machines = machines if machines is not None else []
         machines = [machine for machine in machines if machine in machine_set]
         assert len(machines) <= 1
         duration = float(node["mManufactoringDuration"]) / 60
-        return cls(display, id, inputs, output, machines[0] if len(machines) == 1 else None, duration, alternate)
+        return cls(display, id, inputs, output, machines[0] if len(machines) == 1 else None, duration, None)
 
     @staticmethod
     def parse_item_amount(str):
@@ -180,6 +179,64 @@ class Machine:
         return self.name
 
 
+def unlock_priority(unlock):
+    first = unlock[0]
+    priority = 0
+    if first == 'MAM Research':
+        priority = 3
+    elif first == 'Alternate Recipes':
+        priority = 4
+    elif first == 'Starting Recipes':
+        priority = 2
+    elif first == 'Starting Recipes':
+        priority = 2
+    elif first == 'Milestones':
+        priority = 1
+
+    return priority
+
+
+def parse_unlock(node):
+    POST_SPLIT_PAT = re.compile(r'\.(.+)\"')
+    id = node['ClassName']
+    if id == "Schematic_StartingRecipes_C":
+        kind = 'EST_Starting'
+    elif id == "Schematic_5-1-1_C":
+        # Residual Refinery Recipes
+        kind = 'EST_Milestone'
+    elif id == "Schematic_5-4-1_C":
+        # Unpackage Recipes
+        kind = 'EST_Milestone'
+    else:
+        kind = node['mType']
+    display = node['mDisplayName']
+    tech_tier = node['mTechTier']
+
+    if kind == 'EST_MAM':
+        unlock = ('MAM Research',)
+    elif kind == 'EST_Alternate':
+        unlock = ('Alternate Recipes',)
+    elif kind == 'EST_Tutorial':
+        unlock = ('Starting Recipes', 'Tutorial')
+    elif kind == 'EST_Starting':
+        unlock = ('Starting Recipes', 'Initial')
+    elif kind == 'EST_Milestone':
+        unlock = ('Milestones', f'Tech Tier {tech_tier}', display)
+    else:
+        unlock = ('Other', kind, id)
+
+    recipe_ids = []
+    for unlock_node in node['mUnlocks']:
+        if unlock_node['Class'] == 'BP_UnlockRecipe_C':
+            remove_paren = Recipe.PAR_PAT.match(unlock_node['mRecipes'])
+            assert remove_paren, "Failed to match unlock recipes"
+            recipe_paths = remove_paren.group(1).split(',')
+            recipe_ids.extend(POST_SPLIT_PAT.search(path).group(1)
+                              for path in recipe_paths)
+
+    return (unlock, recipe_ids)
+
+
 def export_docs(game_data, generate_path='./'):
     with open(generate_path + "game_data.yaml", "w") as data_file:
         print("Generating game_data.yaml")
@@ -220,8 +277,29 @@ def scrape_docs(doc_path=None):
         recipes = {
             recipe.id: recipe for recipe in recipes
         }
+        filtered_recipes = {
+            recipe_id: recipe for recipe_id, recipe in recipes.items()
+            if all(resource in items for resource in recipe.inputs)
+            if all(resource in items for resource in recipe.outputs)
+            if recipe.machine is not None
+        }
 
-        return GameData(items, recipes, machines)
+        for node in docs["Class'/Script/FactoryGame.FGSchematic'"]:
+            unlock, recipe_ids = parse_unlock(node)
+            for recipe_id in recipe_ids:
+                recipe = filtered_recipes.get(recipe_id)
+                if recipe is not None:
+                    if recipe.unlock is not None:
+                        if recipe.unlock[0] == unlock[0]:
+                            continue
+                        current_p = unlock_priority(recipe.unlock)
+                        new_p = unlock_priority(unlock)
+                        assert current_p != new_p, f"Equal Priority, {current_p} == {new_p} for {recipe.display}"
+                        if current_p > new_p:
+                            continue
+                    recipe.unlock = list(unlock)
+
+        return GameData(items, filtered_recipes, machines)
 
 
 def get_docs(yaml_path="./", doc_path=None):

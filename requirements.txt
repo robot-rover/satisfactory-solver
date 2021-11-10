@@ -1,7 +1,8 @@
 pygraphviz ~= 1.6
 pulp ~= 2.3
 requests ~= 2.25.1
-beautifulsoup4 ~= 4.8.1
+beautifulsoup4 ~= 4.10.0
 fuzzywuzzy ~= 0.18.0
 python-Levenshtein ~= 0.12.2
 pyside6 ~= 6.2.1
+appdirs ~= 1.4.4

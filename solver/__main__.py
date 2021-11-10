@@ -19,6 +19,6 @@ if __name__ == "__main__":
         visualize.visualize(result, game_parse.get_docs(),
                             image_file='test.svg', dot_file='test.dot')
     else:
-        from . import gui_qt
-        gui = gui_qt.SatisfactorySolverMain(sys.argv)
+        from . import gui_main
+        gui = gui_main.SatisfactorySolverMain(sys.argv)
         gui.run()

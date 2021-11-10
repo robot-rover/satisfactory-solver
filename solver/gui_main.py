@@ -14,6 +14,7 @@ from solver.visualize import visualize
 from . import game_parse
 from .resources import ItemRate
 from . import solve
+from .gui_recipes import AlternateRecipeWindow
 
 OUTPUT_ICON = 'icons/Milestone/Recipe_Icon_Equipment_Dark.png'
 
@@ -256,6 +257,8 @@ class SatisfactorySolverMain(qtw.QApplication):
 
         self.go_box.clicked.connect(self.go_fn)
 
+        self.recipe_window = AlternateRecipeWindow(self.game_data)
+
         self.setup_menu()
 
         if len(args) > 1:
@@ -307,6 +310,15 @@ class SatisfactorySolverMain(qtw.QApplication):
         quitAct.triggered.connect(self.quit)  # TODO prompt for save
         self.file_menu.addAction(quitAct)
         self.file_menu_actions.append(quitAct)
+
+        self.edit_menu = self.w.menuBar().addMenu("&Edit")
+        self.edit_menu_actions = []
+
+        recipeAct = qtg.QAction('&Recipes')
+        recipeAct.setStatusTip('Edit the Enabled Alternate Recipes')
+        recipeAct.triggered.connect(self.recipe_window.show)
+        self.edit_menu.addAction(recipeAct)
+        self.edit_menu_actions.append(recipeAct)
 
     def clearWindow(self):
         self.solution = None
