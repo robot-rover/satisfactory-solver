@@ -186,7 +186,7 @@ class AlternateRecipeWindow(qtw.QWidget):
         self.default_location = os.path.join(
             config_dir, 'default_recipes.yaml')
 
-        self.setWindowTitle('Alternate Recipes')
+        self.setWindowTitle('Enabled Recipes')
         self.layout = qtw.QVBoxLayout()
         self.setLayout(self.layout)
 

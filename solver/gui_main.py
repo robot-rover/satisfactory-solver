@@ -257,6 +257,8 @@ class SatisfactorySolverMain(qtw.QApplication):
         self.center_layout.addWidget(self.svg_view, 1)
 
         self.go_box.clicked.connect(self.go_fn)
+        self.go_box.setShortcut(qtg.QKeySequence(
+            qtc.Qt.CTRL | qtc.Qt.Key_G))
 
         self.recipe_window = AlternateRecipeWindow(self.game_data)
 
@@ -322,11 +324,11 @@ class SatisfactorySolverMain(qtw.QApplication):
         self.edit_menu_actions.append(recipeAct)
 
         self.distAct = qtg.QAction('&Distribute Machines')
-        self.distAct.setStatusTip('Show a recipe quantity distributed across an integer number of machines')
+        self.distAct.setStatusTip(
+            'Show a recipe quantity distributed across an integer number of machines')
         self.distAct.setCheckable(True)
         self.edit_menu.addAction(self.distAct)
         self.edit_menu_actions.append(self.distAct)
-
 
     def clearWindow(self):
         self.solution = None
@@ -363,7 +365,8 @@ class SatisfactorySolverMain(qtw.QApplication):
         self.solution = solve.optimize(
             problem, self.game_data, self.recipe_window.to_recipe_config())
         print(self.solution)
-        visualize(self.solution, self.game_data, image_file='.temp.svg', recipe_distribute=self.distAct.isChecked())
+        visualize(self.solution, self.game_data, image_file='.temp.svg',
+                  recipe_distribute=self.distAct.isChecked())
         self.svg_renderer.load('.temp.svg')
         self.svg_item.setElementId('')
 
@@ -403,7 +406,8 @@ class SatisfactorySolverMain(qtw.QApplication):
             self.w, "Save Implementation Image File", 'factory.svg', 'Vector Image (*.svg);;Raster Image (*.png)')
         if filename == '':
             return
-        visualize(self.solution, self.game_data, image_file=filename, recipe_distribute=self.distAct.isChecked())
+        visualize(self.solution, self.game_data, image_file=filename,
+                  recipe_distribute=self.distAct.isChecked())
 
     def run(self):
         self.w.show()
