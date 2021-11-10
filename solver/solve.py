@@ -68,25 +68,26 @@ class Result:
         ])
 
 
-def optimize(problem, game_data):
+def optimize(problem, game_data, recipe_config):
 
-    # for recipe in game_data.recipes.values():
-    #     print(f'{recipe.id} @ {recipe.machine}: {recipe.inputs} | {recipe.outputs}')
+    filtered_recipes = {
+        recipe_id: recipe for recipe_id, recipe in game_data.recipes.items()
+        if recipe_config.use_recipe(recipe_id)
+    }
 
     capital_str = ",".join(ir.resource for ir in problem.inputs)
     model_name = f'[{capital_str}]->{problem.target}'
-    print(model_name)
     model = LpProblem(name=model_name, sense=LpMaximize)
 
     recipe_variables = [
-        LpVariable(name=f"{recipie_id}", lowBound=0) for recipie_id in game_data.recipes
+        LpVariable(name=f"{recipie_id}", lowBound=0) for recipie_id in filtered_recipes
     ]
 
     constraint_terms = {
         resource_id: [] for resource_id in game_data.items
     }
 
-    for recipe, variable in zip(game_data.recipes.values(), recipe_variables):
+    for recipe, variable in zip(filtered_recipes.values(), recipe_variables):
         if all(resource in game_data.items for resource in recipe.inputs) \
                 and all(resource in game_data.items for resource in recipe.outputs):
             for item_rate in recipe.get_rates():
@@ -112,7 +113,7 @@ def optimize(problem, game_data):
         target_production = model.objective.value()
         model.sense = LpMinimize
         power_objective_terms = [
-            variable * game_data.machines[recipie.machine].power for variable, recipie in zip(recipe_variables, game_data.recipes.values())
+            variable * game_data.machines[recipie.machine].power for variable, recipie in zip(recipe_variables, filtered_recipes.values())
         ]
         target_constraint = lpSum(
             constraint_terms[problem.target]) >= target_production
@@ -121,7 +122,7 @@ def optimize(problem, game_data):
         model.solve()
         model.roundSolution()
         result = Result(problem, model.objective.value(), {
-            recipie.id: variable.value() for recipie, variable in zip(game_data.recipes.values(), recipe_variables)
+            recipie.id: variable.value() for recipie, variable in zip(filtered_recipes.values(), recipe_variables)
             if not math.isclose(variable.value(), 0, abs_tol=0.00001)
         },
             [

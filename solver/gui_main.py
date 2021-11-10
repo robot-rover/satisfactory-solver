@@ -352,7 +352,8 @@ class SatisfactorySolverMain(qtw.QApplication):
             qtw.QMessageBox.warning(self.w, "Select a Target!",
                                     "Please select a target item before solving.")
             return
-        self.solution = solve.optimize(problem, self.game_data)
+        self.solution = solve.optimize(
+            problem, self.game_data, self.recipe_window.to_recipe_config())
         print(self.solution)
         visualize(self.solution, self.game_data, image_file='.temp.svg')
         self.svg_renderer.load('.temp.svg')

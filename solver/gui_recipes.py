@@ -250,9 +250,10 @@ class AlternateRecipeWindow(qtw.QWidget):
 
     def from_recipe_config(self, config):
         self.recipe_model.check_all(False)
-        for enabled_recipe_id in config.enabled_recipes:
-            self.recipe_model.propagate_check(
-                self.recipe_model.item_lookup[enabled_recipe_id], True)
+        for enabled_recipe_id, enabled in config.enabled_recipes.items():
+            if enabled:
+                self.recipe_model.propagate_check(
+                    self.recipe_model.item_lookup[enabled_recipe_id], True)
 
     def to_recipe_config(self):
         return AlternateRecipeConfiguration({
@@ -276,6 +277,7 @@ class AlternateRecipeWindow(qtw.QWidget):
                 self, "Save Recipe Configuration", 'recipes.yaml', 'Recipe Configuration (*.yaml)')
             if file_name == '':
                 return
+        print(f'Writing Config to f{file_name}')
         with open(file_name, 'w') as file:
             yaml.dump(config.to_dict(), file)
 
@@ -294,7 +296,7 @@ class AlternateRecipeWindow(qtw.QWidget):
         with open(file_name, 'r') as file:
             config = AlternateRecipeConfiguration.from_dict(
                 yaml.safe_load(file))
-            self.from_recipe_config(config)
+        self.from_recipe_config(config)
 
     def build_tree(self, game_data):
         root = TreeItem(label='Recipes')
