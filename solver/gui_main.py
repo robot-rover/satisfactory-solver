@@ -83,6 +83,7 @@ class SchematicInputWidget(qtw.QWidget):
         super().__init__()
         self.item = None
         self.group_widget = group_widget
+        self.setFocusProxy(self.group_widget)
 
         layout = qtw.QHBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
@@ -229,6 +230,7 @@ class SatisfactorySolverMain(qtw.QApplication):
         self.input_layout.addWidget(self.input_scroll)
 
         self.input_scroll_holdee = WidthAnchor(self.input_scroll)
+        self.input_scroll.setFocusProxy(self.input_scroll_holdee)
         self.input_list = qtw.QVBoxLayout(self.input_scroll_holdee)
         self.input_scroll_holdee.setLayout(self.input_list)
         self.input_list.insertStretch(-1)
@@ -261,6 +263,8 @@ class SatisfactorySolverMain(qtw.QApplication):
             qtc.Qt.CTRL | qtc.Qt.Key_G))
 
         self.recipe_window = AlternateRecipeWindow(self.game_data)
+
+        self.set_tab_order()
 
         self.setup_menu()
 
@@ -329,6 +333,13 @@ class SatisfactorySolverMain(qtw.QApplication):
         self.distAct.setCheckable(True)
         self.edit_menu.addAction(self.distAct)
         self.edit_menu_actions.append(self.distAct)
+
+    def set_tab_order(self):
+        qtw.QWidget.setTabOrder(self.input_search_box,
+                                self.input_scroll_holdee)
+        qtw.QWidget.setTabOrder(self.input_scroll_holdee, self.output_search)
+        qtw.QWidget.setTabOrder(self.output_search, self.go_box)
+        qtw.QWidget.setTabOrder(self.go_box, self.input_search_box)
 
     def clearWindow(self):
         self.solution = None
