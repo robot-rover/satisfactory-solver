@@ -187,6 +187,7 @@ class AlternateRecipeWindow(qtw.QWidget):
             config_dir, 'default_recipes.yaml')
 
         self.setWindowTitle('Enabled Recipes')
+        self.resize(300, 500)
         self.layout = qtw.QVBoxLayout()
         self.setLayout(self.layout)
 

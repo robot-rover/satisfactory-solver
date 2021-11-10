@@ -1,20 +1,17 @@
-from math import dist
+import math
+
 import PySide6.QtWidgets as qtw
 import PySide6.QtCore as qtc
 import PySide6.QtGui as qtg
 import PySide6.QtSvg as qtsvg
 import PySide6.QtSvgWidgets as qtsvgw
-
 from fuzzywuzzy import process
 import sys
 import yaml
 
-from solver.solve import Problem
-from solver.visualize import visualize
 
-from . import game_parse
+from . import game_parse, solve, visualize
 from .resources import ItemRate
-from . import solve
 from .gui_recipes import AlternateRecipeWindow
 
 OUTPUT_ICON = 'icons/Milestone/Recipe_Icon_Equipment_Dark.png'
@@ -334,6 +331,12 @@ class SatisfactorySolverMain(qtw.QApplication):
         self.edit_menu.addAction(self.distAct)
         self.edit_menu_actions.append(self.distAct)
 
+        excessAct = qtg.QAction('Remove &Excess')
+        excessAct.setStatusTip('Remove excess Inputs from Plan')
+        excessAct.triggered.connect(self.remove_excess_inputs)
+        self.edit_menu.addAction(excessAct)
+        self.edit_menu_actions.append(excessAct)
+
     def set_tab_order(self):
         qtw.QWidget.setTabOrder(self.input_search_box,
                                 self.input_scroll_holdee)
@@ -351,7 +354,15 @@ class SatisfactorySolverMain(qtw.QApplication):
         self.output_show_box.setItem(None)
         self.output_show_box.setIcon(OUTPUT_ICON)
 
+    def iterate_input_widgets(self):
+        return (self.input_list.itemAt(i).widget() for i in range(self.input_list.count() - 1))
+
     def add_input(self, item, rate=0):
+        for item_widget in self.iterate_input_widgets():
+            if item_widget.getItem().id == item.id:
+                item_widget.group_widget.setValue(
+                    item_widget.group_widget.value() + rate)
+                return
         widget = SchematicInputWidget.with_spinbox(item, rate)
         self.input_list.insertWidget(self.input_list.count() - 1, widget)
 
@@ -362,8 +373,7 @@ class SatisfactorySolverMain(qtw.QApplication):
 
         inputs = [
             ItemRate(item_box.getItem().id, item_box.getRate()) for item_box in
-            (self.input_list.itemAt(i).widget()
-             for i in range(self.input_list.count() - 1))
+            self.iterate_input_widgets()
         ]
         return solve.Problem(target, inputs)
 
@@ -376,10 +386,21 @@ class SatisfactorySolverMain(qtw.QApplication):
         self.solution = solve.optimize(
             problem, self.game_data, self.recipe_window.to_recipe_config())
         print(self.solution)
-        visualize(self.solution, self.game_data, image_file='.temp.svg',
-                  recipe_distribute=self.distAct.isChecked())
+        visualize.visualize(self.solution, self.game_data, image_file='.temp.svg',
+                            recipe_distribute=self.distAct.isChecked())
         self.svg_renderer.load('.temp.svg')
         self.svg_item.setElementId('')
+
+    def remove_excess_inputs(self):
+        self.go_fn()
+        if self.solution is None:
+            return
+        for output_ir in self.solution.outputs:
+            for input_widget in self.iterate_input_widgets():
+                if output_ir.resource == input_widget.item.id:
+                    input_widget.group_widget.setValue(
+                        input_widget.group_widget.value() - math.floor(output_ir.rate))
+        self.go_fn()
 
     def open_plan(self, direct=False):
         if not direct:
