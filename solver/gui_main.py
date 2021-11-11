@@ -13,7 +13,7 @@ import yaml
 from . import game_parse, solve, visualize
 from .resources import ItemRate
 from .gui_recipes import AlternateRecipeWindow
-from .gui_recipe import RecipeListWindow
+from .gui_item import RecipeListWindow
 
 OUTPUT_ICON = 'icons/Milestone/Recipe_Icon_Equipment_Dark.png'
 
@@ -388,9 +388,9 @@ class SatisfactorySolverMain(qtw.QApplication):
         self.input_list.insertWidget(self.input_list.count() - 1, widget)
 
     def save_window(self, window):
-        for window in self.windows:
-            if window.isVisible():
-                print("Null")
+        self.windows = [
+            exist for exist in self.windows if exist.isVisible()
+        ]
         self.windows.append(window)
 
     def get_problem(self):
