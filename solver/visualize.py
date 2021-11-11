@@ -50,7 +50,7 @@ def visualize(result, game_data, image_file=None, dot_file=None, layout='dot', r
         num_machines = math.ceil(quantity)
         if recipe_distribute and num_machines > 1:
             num_machines = math.ceil(quantity)
-            per_machine = quantity / num_machines
+            per_machine = round(quantity / num_machines, 3)
             distribute_string = f'(x{num_machines} @ {per_machine})\n'
 
         name = f"{recipe.display}\n{machine_name} x{round(quantity, 3)}\n{distribute_string}{inputs}\n{outputs}"

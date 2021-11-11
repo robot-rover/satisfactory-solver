@@ -328,6 +328,7 @@ class SatisfactorySolverMain(qtw.QApplication):
         self.distAct.setStatusTip(
             'Show a recipe quantity distributed across an integer number of machines')
         self.distAct.setCheckable(True)
+        self.distAct.triggered.connect(self.go_fn)
         self.edit_menu.addAction(self.distAct)
         self.edit_menu_actions.append(self.distAct)
 
@@ -412,6 +413,7 @@ class SatisfactorySolverMain(qtw.QApplication):
             self.current_file = file_name
         with open(self.current_file, 'r') as file:
             plan = solve.Problem.from_dict(yaml.load(file))
+        self.clearWindow()
         self.output_show_box.setItem(self.game_data.items[plan.target])
         for ir in plan.inputs:
             item = self.game_data.items[ir.resource]
