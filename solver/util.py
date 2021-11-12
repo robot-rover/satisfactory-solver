@@ -2,6 +2,7 @@ from json.decoder import JSONDecoder
 from json.encoder import JSONEncoder
 from sys import flags
 
+
 def to_from_dict(fields, manual_fields=[]):
     def wrap_the_class(c):
         @classmethod
@@ -27,9 +28,11 @@ def to_from_dict(fields, manual_fields=[]):
         return c
     return wrap_the_class
 
+
 class AttributeEncoder(JSONEncoder):
     def default(self, o):
         return o.to_dict()
+
 
 @to_from_dict(['name', 'args', 'flags'])
 class Case:
@@ -44,3 +47,12 @@ class Case:
     def __repr__(self):
         return f'Case({self.name}, {self.args})'
 
+
+def clearLayout(layout):
+    while layout.count() > 0:
+        child = layout.takeAt(0)
+        if child.widget() is not None:
+            child.widget().deleteLater()
+        elif child.layout() is not None:
+            clearLayout(child.layout())
+    layout.deleteLater()

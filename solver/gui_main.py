@@ -77,11 +77,11 @@ class ItemSearchWidget(qtw.QLineEdit):
 
 
 class SchematicInputWidget(qtw.QWidget):
-    def __init__(self, item, group_widget, save_window_fn, game_data, check_delete=True):
+    def __init__(self, item, group_widget, open_recipe_window, game_data, check_delete=True):
         super().__init__()
         self.item = None
         self.game_data = game_data
-        self.save_window_fn = save_window_fn
+        self.open_recipe_window = open_recipe_window
         self.group_widget = group_widget
         self.setFocusProxy(self.group_widget)
 
@@ -94,7 +94,8 @@ class SchematicInputWidget(qtw.QWidget):
         self.icon_label = qtw.QPushButton()
         self.icon_label.setFlat(True)
         self.icon_label.setFixedSize(50, 50)
-        self.icon_label.clicked.connect(self.open_recipe_window)
+        self.icon_label.clicked.connect(
+            lambda: self.open_recipe_window(self.item))
         layout.addWidget(self.icon_label, 0)
 
         self.group_box = qtw.QGroupBox()
@@ -122,13 +123,6 @@ class SchematicInputWidget(qtw.QWidget):
         group_widget.setMinimum(-2**31)
         group_widget.setValue(rate)
         return group_widget
-
-    def open_recipe_window(self):
-        if self.item is None:
-            return
-        window = RecipeListWindow(self.item, self.game_data)
-        window.show()
-        self.save_window_fn(window)
 
     def setItem(self, item):
         self.item = item
@@ -259,7 +253,7 @@ class SatisfactorySolverMain(qtw.QApplication):
         self.input_layout.addWidget(self.output_search)
         self.go_box = qtw.QPushButton("Go!")
         self.output_show_box = SchematicInputWidget(
-            None, self.go_box, self.save_window, self.game_data, False)
+            None, self.go_box, self.open_recipe_window, self.game_data, False)
         self.output_show_box.setIcon(OUTPUT_ICON)
         self.input_layout.addWidget(self.output_show_box)
 
@@ -384,8 +378,16 @@ class SatisfactorySolverMain(qtw.QApplication):
                     item_widget.group_widget.value() + rate)
                 return
         widget = SchematicInputWidget.with_spinbox(
-            item, rate, self.save_window, self.game_data)
+            item, rate, self.open_recipe_window, self.game_data)
         self.input_list.insertWidget(self.input_list.count() - 1, widget)
+
+    def open_recipe_window(self, item):
+        if item is None:
+            return
+        window = RecipeListWindow(
+            item, self.game_data, self.open_recipe_window)
+        window.show()
+        self.save_window(window)
 
     def save_window(self, window):
         self.windows = [
