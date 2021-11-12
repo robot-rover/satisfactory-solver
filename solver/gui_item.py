@@ -48,6 +48,7 @@ class RecipeListWindow(qtw.QWidget):
     def __init__(self, item, game_data, open_recipe_window):
         super().__init__()
         self.game_data = game_data
+        self.open_recipe_window = open_recipe_window
 
         self.resize(700, 400)
         self.layout = qtw.QHBoxLayout()
@@ -122,7 +123,7 @@ class RecipeListWindow(qtw.QWidget):
         item_icon = qtw.QPushButton()
         item_icon.setFlat(True)
         item_icon.setFixedSize(50, 50)
-        item_icon.clicked.connect(lambda: self.select_item(item))
+        item_icon.clicked.connect(lambda: self.select_item(item, True))
         pixmap = qtg.QPixmap(item.icon).scaledToHeight(
             50, qtc.Qt.SmoothTransformation)
         icon = qtg.QIcon(pixmap)
@@ -143,7 +144,10 @@ class RecipeListWindow(qtw.QWidget):
         while self.output_flow.count() > 0:
             clearLayout(self.output_flow.takeAt(0).layout())
 
-    def select_item(self, item):
+    def select_item(self, item, click=False):
+        if click and qtw.QApplication.keyboardModifiers() & qtc.Qt.ControlModifier:
+            self.open_recipe_window(item)
+            return
         self.clear_recipe()
         self.setWindowTitle(f'Recipe Viewer - {item.display}')
 
