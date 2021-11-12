@@ -53,6 +53,7 @@ class RecipeListWindow(qtw.QWidget):
         ]
 
         self.input_group = qtw.QGroupBox('Input to')
+        self.input_group.setFlat(True)
         self.lists_layout.addWidget(self.input_group)
 
         self.input_list_layout = qtw.QVBoxLayout()
@@ -69,6 +70,7 @@ class RecipeListWindow(qtw.QWidget):
         ]
 
         self.output_group = qtw.QGroupBox('Output From')
+        self.output_group.setFlat(True)
         self.lists_layout.addWidget(self.output_group)
 
         self.output_list_layout = qtw.QVBoxLayout()
@@ -78,4 +80,11 @@ class RecipeListWindow(qtw.QWidget):
         self.output_model = ListModel(output_recipes)
         self.output_list.setModel(self.output_model)
         self.output_list_layout.addWidget(self.output_list)
+
+    def select_recipe(self, recipe, input):
+        if input:
+            self.input_list.clearSelection()
+        else:
+            self.output_list.clearSelection()
+        print(recipe.id, recipe.display)
 
