@@ -166,17 +166,14 @@ class WidthAnchor(qtw.QWidget):
 class ZoomingGraphicsView(qtw.QGraphicsView):
     def __init__(self, scene):
         super().__init__(scene)
+        # Keep mouse in same spot when zooming
+        self.setTransformationAnchor(qtw.QGraphicsView.AnchorUnderMouse)
 
     def wheelEvent(self, event):
         modifiers = event.modifiers()
         if modifiers & qtc.Qt.ControlModifier:
-            # https://stackoverflow.com/questions/19113532/qgraphicsview-zooming-in-and-out-under-mouse-position-using-mouse-wheel
             zoomInFactor = 1.25
             zoomOutFactor = 1 / zoomInFactor
-
-            # Save the scene pos
-            oldPos = event.position()
-            unmapped_pos = self.mapFromScene(oldPos)
 
             # Zoom
             if event.angleDelta().y() > 0:
@@ -184,13 +181,6 @@ class ZoomingGraphicsView(qtw.QGraphicsView):
             else:
                 zoomFactor = zoomOutFactor
             self.scale(zoomFactor, zoomFactor)
-
-            # Get the new position
-            newPos = self.mapToScene(unmapped_pos)
-
-            # Move scene to old position
-            delta = newPos - oldPos
-            self.translate(delta.x(), delta.y())
         elif modifiers & qtc.Qt.ShiftModifier:
             # Implement Horizontal Scrolling
             angle_delta = qtc.QPoint(
