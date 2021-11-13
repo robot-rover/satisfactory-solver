@@ -27,6 +27,7 @@ def visualize(result, game_data, image_file=None, dot_file=None, layout='dot', r
 
     output_nodes = {
         rate: f"Output:\n{rate.format(game_data)}" for rate in result.outputs
+        if result.throughput[rate.resource] / abs(rate.rate) < 1000
     }
 
     for rate, name in output_nodes.items():

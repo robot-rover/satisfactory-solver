@@ -27,11 +27,12 @@ class Problem:
 
 
 class Result:
-    def __init__(self, problem, objective, recipes, outputs):
+    def __init__(self, problem, objective, recipes, outputs, throughput):
         self.problem = problem
         self.objective = objective
         self.recipes = recipes
         self.outputs = outputs
+        self.throughput = throughput
 
     def to_dict(self):
         return {
@@ -120,7 +121,14 @@ def optimize(problem, game_data, recipe_config):
         model.constraints[f"objective_production_{problem.target}"] = target_constraint
         model.setObjective(lpSum(power_objective_terms))
         model.solve()
-        model.roundSolution()
+        throughput = {}
+        for ir in problem.inputs:
+            throughput[ir.resource] = throughput.get(ir.resource, 0) + ir.rate
+        for recipe, variable in zip(filtered_recipes.values(), recipe_variables):
+            for ir in recipe.output_rates():
+                if variable.value() > 0:
+                    throughput[ir.resource] = throughput.get(ir.resource, 0) + ir.rate * variable.value()
+
         result = Result(problem, model.objective.value(), {
             recipie.id: variable.value() for recipie, variable in zip(filtered_recipes.values(), recipe_variables)
             if not math.isclose(variable.value(), 0, abs_tol=0.00001)
@@ -129,7 +137,7 @@ def optimize(problem, game_data, recipe_config):
             ItemRate(resource, constraint[0].value()) for resource, constraint in constraints.items()
             if constraint[0].value() is not None
             if not math.isclose(constraint[0].value(), 0, rel_tol=0.00001, abs_tol=0.00001)
-        ])
+        ], throughput)
         return result
 
 

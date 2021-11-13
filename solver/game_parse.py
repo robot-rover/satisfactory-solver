@@ -37,14 +37,15 @@ class GameData:
         })
 
 
-@to_from_dict(['display', 'id', 'description', 'form', 'icon'])
+@to_from_dict(['display', 'id', 'description', 'form', 'icon', 'solid'])
 class Item:
-    def __init__(self, display, id, description, form, icon):
+    def __init__(self, display, id, description, form, icon, solid):
         self.display = display
         self.id = id
         self.description = description
         self.form = form
         self.icon = icon
+        self.solid = solid
 
     @classmethod
     def from_node(cls, node):
@@ -53,8 +54,10 @@ class Item:
         description = node["mDescription"].replace("\r\n", "\n")
         form = node["mForm"]
         prefix = None
+        solid = False
         if form == "RF_SOLID":
             prefix = "icons/Item/"
+            solid = True
         elif form == "RF_LIQUID":
             prefix = "icons/Fluid/"
         elif form == "RF_GAS":
@@ -65,7 +68,7 @@ class Item:
         if id in ("Desc_GolfCart_C", "Desc_GolfCartGold_C"):
             icon = 'icons/Vehicle/Factory_Cart.png'
         assert path.exists(icon), f"{icon} doesn't exist"
-        return cls(display, id, description, form, icon)
+        return cls(display, id, description, form, icon, solid)
 
     def __str__(self):
         return self.display
@@ -106,11 +109,11 @@ class Recipe:
         ]
 
     @classmethod
-    def from_node(cls, node, machine_set):
+    def from_node(cls, node, items, machine_set):
         display = node["mDisplayName"]
         id = node["ClassName"]
-        inputs = Recipe.parse_item_amount(node["mIngredients"])
-        output = Recipe.parse_item_amount(node["mProduct"])
+        inputs = Recipe.parse_item_amount(node["mIngredients"], items)
+        output = Recipe.parse_item_amount(node["mProduct"], items)
         machines = Recipe.parse_machines(node["mProducedIn"])
         machines = machines if machines is not None else []
         machines = [machine for machine in machines if machine in machine_set]
@@ -119,7 +122,7 @@ class Recipe:
         return cls(display, id, inputs, output, machines[0] if len(machines) == 1 else None, duration, None)
 
     @staticmethod
-    def parse_item_amount(str):
+    def parse_item_amount(str, items):
         amt_dict = {}
         search_start = 0
         pm = Recipe.PAR_PAT.fullmatch(str)
@@ -128,7 +131,7 @@ class Recipe:
         while search_start < len(par_str):
             m = Recipe.AMT_PAT.search(par_str, search_start)
             assert m, f"Unrecognized Amount String: '{par_str}'"
-            amt_dict[m[1]] = int(m[2])
+            amt_dict[m[1]] = int(m[2]) if m[1] not in items or items[m[1]].solid else int(m[2]) / 1000
             search_start = m.end()
         return amt_dict
 
@@ -264,7 +267,7 @@ def scrape_docs(doc_path=DOC_JSON_PATH):
         }
 
         recipes = (
-            Recipe.from_node(node, machines) for node in docs["Class'/Script/FactoryGame.FGRecipe'"]
+            Recipe.from_node(node, items, machines) for node in docs["Class'/Script/FactoryGame.FGRecipe'"]
         )
         recipes = {
             recipe.id: recipe for recipe in recipes
