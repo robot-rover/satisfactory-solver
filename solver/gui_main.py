@@ -359,6 +359,7 @@ class SatisfactorySolverMain(qtw.QApplication):
         qtw.QWidget.setTabOrder(self.go_box, self.input_search_box)
 
     def clearWindow(self):
+        self.current_file = None
         self.solution = None
         self.svg_renderer.deleteLater()
         self.svg_renderer = qtsvg.QSvgRenderer()
@@ -440,7 +441,7 @@ class SatisfactorySolverMain(qtw.QApplication):
                 return
             self.current_file = file_name
         with open(self.current_file, 'r') as file:
-            plan = solve.Problem.from_dict(yaml.load(file))
+            plan = solve.Problem.from_dict(yaml.safe_load(file))
         self.clearWindow()
         self.output_show_box.setItem(self.game_data.items[plan.target])
         for ir in plan.inputs:
