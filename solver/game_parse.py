@@ -254,6 +254,12 @@ def scrape_docs(doc_path=DOC_JSON_PATH):
         ), (
             Item.from_node(node)
             for node in docs["Class'/Script/FactoryGame.FGEquipmentDescriptor'"]
+        ), (
+            Item.from_node(node)
+            for node in docs["Class'/Script/FactoryGame.FGConsumableDescriptor'"]
+        ), (
+            Item.from_node(node)
+            for node in docs["Class'/Script/FactoryGame.FGItemDescAmmoTypeInstantHit'"]
         ))
         items = {
             item.id: item for item in items
